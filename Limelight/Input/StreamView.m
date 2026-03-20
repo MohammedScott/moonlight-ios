@@ -703,6 +703,7 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
     
     CGPoint currentScrollTranslation = [gesture translationInView:self];
     const short translationMultiplier = 120 * 20;
+    TemporarySettings *settings = [[[DataManager alloc] init] getSettings];
     short scrollDirection = settings.reverseScrollDirection ? -1 : 1;
     
     {
@@ -733,6 +734,7 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
     }
     
     CGPoint currentScrollTranslation = [gesture translationInView:self];
+    TemporarySettings *settings = [[[DataManager alloc] init] getSettings];
     short scrollDirection = settings.reverseScrollDirection ? -1 : 1;
     
     {
