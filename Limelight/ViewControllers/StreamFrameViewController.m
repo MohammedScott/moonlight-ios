@@ -37,6 +37,7 @@
 @implementation ExternalDisplayManager {
     UIWindow *_externalWindow;
     UILabel *_statusLabel;
+    UILabel *_subtitleLabel;
     UIActivityIndicatorView *_spinner;
 }
 
@@ -139,9 +140,23 @@
 
 - (void)showStreamingScreen {
     dispatch_async(dispatch_get_main_queue(), ^{
-        self->_statusLabel.text = @"Streaming...";
-        [self->_spinner stopAnimating];
+        self->_statusLabel.text = @"Stream active on iPhone";
         self->_spinner.hidden = YES;
+        [self->_spinner stopAnimating];
+        
+        // Add a subtitle
+        if (self->_subtitleLabel == nil) {
+            self->_subtitleLabel = [[UILabel alloc] init];
+            self->_subtitleLabel.text = @"Video output coming soon";
+            self->_subtitleLabel.textColor = [UIColor grayColor];
+            self->_subtitleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightLight];
+            self->_subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
+            [self->_statusLabel.superview addSubview:self->_subtitleLabel];
+            [NSLayoutConstraint activateConstraints:@[
+                [self->_subtitleLabel.centerXAnchor constraintEqualToAnchor:self->_statusLabel.centerXAnchor],
+                [self->_subtitleLabel.topAnchor constraintEqualToAnchor:self->_statusLabel.bottomAnchor constant:8],
+            ]];
+        }
     });
 }
 
@@ -185,16 +200,15 @@
 #endif
 }
 
-- (void)viewDidAppear:(BOOL)animated
-{
-    [super viewDidAppear:animated];
-    
+- (void)mousePresenceChanged {
 #if !TARGET_OS_TV
-    // Force cursor lock update when view appears
     if (@available(iOS 14.0, *)) {
         [self setNeedsUpdateOfPrefersPointerLocked];
+        // Force immediate update
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self setNeedsUpdateOfPrefersPointerLocked];
+        });
     }
-    [[self revealViewController] setPrimaryViewController:self];
 #endif
 }
 
@@ -819,7 +833,6 @@
 }
 
 #if !TARGET_OS_TV
-// Require a confirmation when streaming to activate a system gesture
 - (UIRectEdge)preferredScreenEdgesDeferringSystemGestures {
     return UIRectEdgeAll;
 }
@@ -828,16 +841,8 @@
     if ([_controllerSupport getConnectedGamepadCount] > 0 &&
         [_streamView getCurrentOscState] == OnScreenControlsLevelOff &&
         _userIsInteracting == NO) {
-        // Autohide the home bar when a gamepad is connected
-        // and the on-screen controls are disabled. We can't
-        // do this all the time because any touch on the display
-        // will cause the home indicator to reappear, and our
-        // preferredScreenEdgesDeferringSystemGestures will also
-        // be suppressed (leading to possible errant exits of the
-        // stream).
         return YES;
     }
-    
     return NO;
 }
 
@@ -846,7 +851,6 @@
 }
 
 - (BOOL)prefersPointerLocked {
-    // Always lock pointer when streaming for clean cursor hiding
     return YES;
 }
 
