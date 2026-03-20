@@ -12,6 +12,7 @@
 #import "StreamManager.h"
 #import "ControllerSupport.h"
 #import "DataManager.h"
+#import "Moonlight-Swift.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
