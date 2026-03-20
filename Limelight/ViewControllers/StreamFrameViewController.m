@@ -77,11 +77,6 @@
 
 - (void)viewDidLoad
 {
-    // Hide cursor completely when streaming
-    if (@available(iOS 14.0, *)) {
-    [self setNeedsUpdateOfPrefersPointerLocked];
-    }
-
     // Start external display monitoring
     [[ExternalDisplayManager shared] startMonitoring];
     

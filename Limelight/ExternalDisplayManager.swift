@@ -1,12 +1,12 @@
 import UIKit
 
-class ExternalDisplayManager {
+@objc class ExternalDisplayManager: NSObject {
     
-    static let shared = ExternalDisplayManager()
+    @objc static let shared = ExternalDisplayManager()
     
     private var externalWindow: UIWindow?
     
-    func startMonitoring() {
+    @objc func startMonitoring() {
         // Check if a screen is already connected at launch
         if UIScreen.screens.count > 1 {
             handleScreenConnected(UIScreen.screens[1])
@@ -29,7 +29,7 @@ class ExternalDisplayManager {
         )
     }
     
-    func stopMonitoring() {
+    @objc func stopMonitoring() {
         NotificationCenter.default.removeObserver(self)
         externalWindow?.isHidden = true
         externalWindow = nil
