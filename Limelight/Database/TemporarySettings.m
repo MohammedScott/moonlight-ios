@@ -85,6 +85,7 @@
     self.btMouseSupport = settings.btMouseSupport;
     self.absoluteTouchMode = settings.absoluteTouchMode;
     self.statsOverlay = settings.statsOverlay;
+    self.reverseScrollDirection = [[NSUserDefaults standardUserDefaults] boolForKey:@"reverseScrollDirection"];
 #endif
     self.uniqueId = settings.uniqueId;
     

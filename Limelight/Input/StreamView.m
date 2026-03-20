@@ -695,30 +695,27 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
         case UIGestureRecognizerStateBegan:
         case UIGestureRecognizerStateChanged:
             break;
-        
         case UIGestureRecognizerStateEnded:
         default:
-            // Ignore recognition failure and other states
             lastScrollTranslation = CGPointMake(0, 0);
             return;
     }
     
     CGPoint currentScrollTranslation = [gesture translationInView:self];
-    const short translationMultiplier = 120 * 20; // WHEEL_DELTA * 20
+    const short translationMultiplier = 120 * 20;
+    short scrollDirection = settings.reverseScrollDirection ? -1 : 1;
     
     {
         short translationDeltaY = ((currentScrollTranslation.y - lastScrollTranslation.y) / self.bounds.size.height) * translationMultiplier;
         if (translationDeltaY != 0) {
-            LiSendHighResScrollEvent(translationDeltaY);
+            LiSendHighResScrollEvent(translationDeltaY * scrollDirection);
             lastScrollTranslation = currentScrollTranslation;
         }
     }
-
     {
         short translationDeltaX = ((currentScrollTranslation.x - lastScrollTranslation.x) / self.bounds.size.width) * translationMultiplier;
         if (translationDeltaX != 0) {
-            // Direction is reversed from vertical scrolling
-            LiSendHighResHScrollEvent(-translationDeltaX);
+            LiSendHighResHScrollEvent(-translationDeltaX * scrollDirection);
             lastScrollTranslation = currentScrollTranslation;
         }
     }
@@ -729,30 +726,25 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
         case UIGestureRecognizerStateBegan:
         case UIGestureRecognizerStateChanged:
             break;
-        
         case UIGestureRecognizerStateEnded:
         default:
-            // Ignore recognition failure and other states
             lastScrollTranslation = CGPointMake(0, 0);
             return;
     }
     
-    // Using velocityInView is 0 for discrete scroll events
-    // when scrolling very slowly, but translationInView does work.
     CGPoint currentScrollTranslation = [gesture translationInView:self];
+    short scrollDirection = settings.reverseScrollDirection ? -1 : 1;
     
     {
         short translationDeltaY = currentScrollTranslation.y - lastScrollTranslation.y;
         if (translationDeltaY != 0) {
-            LiSendScrollEvent(translationDeltaY > 0 ? 1 : -1);
+            LiSendScrollEvent((translationDeltaY > 0 ? 1 : -1) * scrollDirection);
         }
     }
-
     {
         short translationDeltaX = currentScrollTranslation.x - lastScrollTranslation.x;
         if (translationDeltaX != 0) {
-            // Direction is reversed from vertical scrolling
-            LiSendHScrollEvent(translationDeltaX < 0 ? 1 : -1);
+            LiSendHScrollEvent((translationDeltaX < 0 ? 1 : -1) * scrollDirection);
         }
     }
     

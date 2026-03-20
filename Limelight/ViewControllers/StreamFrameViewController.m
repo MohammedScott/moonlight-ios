@@ -30,10 +30,14 @@
 + (instancetype)shared;
 - (void)startMonitoring;
 - (void)stopMonitoring;
+- (void)showStreamingScreen;
+- (void)showWaitingScreen;
 @end
 
 @implementation ExternalDisplayManager {
     UIWindow *_externalWindow;
+    UILabel *_statusLabel;
+    UIActivityIndicatorView *_spinner;
 }
 
 + (instancetype)shared {
@@ -57,8 +61,10 @@
 
 - (void)stopMonitoring {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    _externalWindow.hidden = YES;
-    _externalWindow = nil;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self->_externalWindow.hidden = YES;
+        self->_externalWindow = nil;
+    });
 }
 
 - (void)screenDidConnect:(NSNotification *)note {
@@ -69,18 +75,82 @@
 }
 
 - (void)screenDidDisconnect:(NSNotification *)note {
-    _externalWindow.hidden = YES;
-    _externalWindow = nil;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self->_externalWindow.hidden = YES;
+        self->_externalWindow = nil;
+    });
 }
 
 - (void)handleScreenConnected:(UIScreen *)screen {
-    UIWindow *window = [[UIWindow alloc] initWithFrame:screen.bounds];
-    window.screen = screen;
-    UIViewController *vc = [UIViewController new];
-    vc.view.backgroundColor = [UIColor blackColor];
-    window.rootViewController = vc;
-    window.hidden = NO;
-    _externalWindow = window;
+    dispatch_async(dispatch_get_main_queue(), ^{
+        // Create fullscreen window on external display
+        UIWindow *window = [[UIWindow alloc] initWithFrame:screen.bounds];
+        window.screen = screen;
+        
+        // Black background view controller
+        UIViewController *vc = [UIViewController new];
+        vc.view.backgroundColor = [UIColor blackColor];
+        
+        // App icon
+        UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppIcon"]];
+        iconView.contentMode = UIViewContentModeScaleAspectFit;
+        iconView.layer.cornerRadius = 20;
+        iconView.clipsToBounds = YES;
+        iconView.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        // Waiting label
+        self->_statusLabel = [[UILabel alloc] init];
+        self->_statusLabel.text = @"Waiting for stream...";
+        self->_statusLabel.textColor = [UIColor whiteColor];
+        self->_statusLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightLight];
+        self->_statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        // Spinner
+        self->_spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+        self->_spinner.translatesAutoresizingMaskIntoConstraints = NO;
+        [self->_spinner startAnimating];
+        
+        // Layout
+        [vc.view addSubview:iconView];
+        [vc.view addSubview:self->_statusLabel];
+        [vc.view addSubview:self->_spinner];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            // Icon - centered slightly above middle
+            [iconView.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
+            [iconView.centerYAnchor constraintEqualToAnchor:vc.view.centerYAnchor constant:-80],
+            [iconView.widthAnchor constraintEqualToConstant:100],
+            [iconView.heightAnchor constraintEqualToConstant:100],
+            
+            // Spinner - below icon
+            [self->_spinner.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
+            [self->_spinner.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:24],
+            
+            // Label - below spinner
+            [self->_statusLabel.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
+            [self->_statusLabel.topAnchor constraintEqualToAnchor:self->_spinner.bottomAnchor constant:16],
+        ]];
+        
+        window.rootViewController = vc;
+        window.hidden = NO;
+        self->_externalWindow = window;
+    });
+}
+
+- (void)showStreamingScreen {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self->_statusLabel.text = @"Streaming...";
+        [self->_spinner stopAnimating];
+        self->_spinner.hidden = YES;
+    });
+}
+
+- (void)showWaitingScreen {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self->_statusLabel.text = @"Waiting for stream...";
+        self->_spinner.hidden = NO;
+        [self->_spinner startAnimating];
+    });
 }
 @end
 // ---- End External Display Manager ----
@@ -120,8 +190,14 @@
     [super viewDidAppear:animated];
     
 #if !TARGET_OS_TV
+    // Force cursor lock update when view appears
+    if (@available(iOS 14.0, *)) {
+        [self setNeedsUpdateOfPrefersPointerLocked];
+    }
     [[self revealViewController] setPrimaryViewController:self];
 #endif
+}
+
 }
 
 #if TARGET_OS_TV
@@ -435,6 +511,9 @@
 - (void) connectionStarted {
     Log(LOG_I, @"Connection started");
     dispatch_async(dispatch_get_main_queue(), ^{
+
+        [[ExternalDisplayManager shared] showStreamingScreen];
+        
         // Leave the spinner spinning until it's obscured by
         // the first frame of video.
         self->_stageLabel.hidden = YES;

@@ -244,6 +244,7 @@ BOOL isCustomResolution(CGSize res) {
     [self.touchModeSelector addTarget:self action:@selector(touchModeChanged) forControlEvents:UIControlEventValueChanged];
     [self.statsOverlaySelector setSelectedSegmentIndex:currentSettings.statsOverlay ? 1 : 0];
     [self.btMouseSelector setSelectedSegmentIndex:currentSettings.btMouseSupport ? 1 : 0];
+    [self.reverseScrollSelector setSelectedSegmentIndex:currentSettings.reverseScrollDirection ? 1 : 0];
     [self.optimizeSettingsSelector setSelectedSegmentIndex:currentSettings.optimizeGames ? 1 : 0];
     [self.framePacingSelector setSelectedSegmentIndex:currentSettings.useFramePacing ? 1 : 0];
     [self.multiControllerSelector setSelectedSegmentIndex:currentSettings.multiController ? 1 : 0];
@@ -261,6 +262,33 @@ BOOL isCustomResolution(CGSize res) {
     [self.bitrateSlider setMaximumValue:(sizeof(bitrateTable) / sizeof(*bitrateTable)) - 1];
     [self.bitrateSlider setValue:[self getSliderValueForBitrate:_bitrate] animated:YES];
     [self.bitrateSlider addTarget:self action:@selector(bitrateSliderMoved) forControlEvents:UIControlEventValueChanged];
+
+    UILabel *reverseScrollLabel = [[UILabel alloc] init];
+reverseScrollLabel.text = @"Reverse Scroll Direction";
+reverseScrollLabel.textColor = [UIColor labelColor];
+reverseScrollLabel.font = [UIFont systemFontOfSize:16];
+reverseScrollLabel.translatesAutoresizingMaskIntoConstraints = NO;
+
+self.reverseScrollSelector = [[UISegmentedControl alloc] initWithItems:@[@"Off", @"On"]];
+[self.reverseScrollSelector setSelectedSegmentIndex:currentSettings.reverseScrollDirection ? 1 : 0];
+self.reverseScrollSelector.translatesAutoresizingMaskIntoConstraints = NO;
+
+UIStackView *reverseScrollStack = [[UIStackView alloc] initWithArrangedSubviews:@[reverseScrollLabel, self.reverseScrollSelector]];
+reverseScrollStack.axis = UILayoutConstraintAxisHorizontal;
+reverseScrollStack.distribution = UIStackViewDistributionEqualSpacing;
+reverseScrollStack.alignment = UIStackViewAlignmentCenter;
+reverseScrollStack.translatesAutoresizingMaskIntoConstraints = NO;
+
+UIView *contentView = self.scrollView.subviews.firstObject;
+[contentView addSubview:reverseScrollStack];
+
+UIView *lastView = self.statsOverlaySelector;
+[NSLayoutConstraint activateConstraints:@[
+    [reverseScrollStack.topAnchor constraintEqualToAnchor:lastView.bottomAnchor constant:24],
+    [reverseScrollStack.leadingAnchor constraintEqualToAnchor:contentView.leadingAnchor constant:16],
+    [reverseScrollStack.trailingAnchor constraintEqualToAnchor:contentView.trailingAnchor constant:-16],
+]];
+    
     [self updateBitrateText];
     [self updateResolutionDisplayViewText];
 }
@@ -534,6 +562,7 @@ BOOL isCustomResolution(CGSize res) {
     BOOL audioOnPC = [self.audioOnPCSelector selectedSegmentIndex] == 1;
     uint32_t preferredCodec = [self getChosenCodecPreference];
     BOOL btMouseSupport = [self.btMouseSelector selectedSegmentIndex] == 1;
+    BOOL reverseScrollDirection = [self.reverseScrollSelector selectedSegmentIndex] == 1;
     BOOL useFramePacing = [self.framePacingSelector selectedSegmentIndex] == 1;
     BOOL absoluteTouchMode = [self.touchModeSelector selectedSegmentIndex] == 1;
     BOOL statsOverlay = [self.statsOverlaySelector selectedSegmentIndex] == 1;
@@ -553,7 +582,8 @@ BOOL isCustomResolution(CGSize res) {
                            enableHdr:enableHdr
                       btMouseSupport:btMouseSupport
                    absoluteTouchMode:absoluteTouchMode
-                        statsOverlay:statsOverlay];
+                        statsOverlay:statsOverlay
+              reverseScrollDirection:reverseScrollDirection];
 }
 
 - (void)didReceiveMemoryWarning {
