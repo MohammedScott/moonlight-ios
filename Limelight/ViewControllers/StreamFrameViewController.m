@@ -12,7 +12,6 @@
 #import "StreamManager.h"
 #import "ControllerSupport.h"
 #import "DataManager.h"
-#import "Moonlight-Swift.h"
 
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -24,6 +23,68 @@
 #import <AVKit/AVDisplayManager.h>
 #import <AVKit/UIWindow.h>
 #endif
+
+
+// ---- External Display Manager ----
+@interface ExternalDisplayManager : NSObject
++ (instancetype)shared;
+- (void)startMonitoring;
+- (void)stopMonitoring;
+@end
+
+@implementation ExternalDisplayManager {
+    UIWindow *_externalWindow;
+}
+
++ (instancetype)shared {
+    static ExternalDisplayManager *instance;
+    static dispatch_once_t token;
+    dispatch_once(&token, ^{ instance = [ExternalDisplayManager new]; });
+    return instance;
+}
+
+- (void)startMonitoring {
+    if (UIScreen.screens.count > 1) {
+        [self handleScreenConnected:UIScreen.screens[1]];
+    }
+    [[NSNotificationCenter defaultCenter] addObserver:self
+        selector:@selector(screenDidConnect:)
+        name:UIScreenDidConnectNotification object:nil];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+        selector:@selector(screenDidDisconnect:)
+        name:UIScreenDidDisconnectNotification object:nil];
+}
+
+- (void)stopMonitoring {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
+    _externalWindow.hidden = YES;
+    _externalWindow = nil;
+}
+
+- (void)screenDidConnect:(NSNotification *)note {
+    UIScreen *screen = note.object;
+    if ([screen isKindOfClass:[UIScreen class]]) {
+        [self handleScreenConnected:screen];
+    }
+}
+
+- (void)screenDidDisconnect:(NSNotification *)note {
+    _externalWindow.hidden = YES;
+    _externalWindow = nil;
+}
+
+- (void)handleScreenConnected:(UIScreen *)screen {
+    UIWindow *window = [[UIWindow alloc] initWithFrame:screen.bounds];
+    window.screen = screen;
+    UIViewController *vc = [UIViewController new];
+    vc.view.backgroundColor = [UIColor blackColor];
+    window.rootViewController = vc;
+    window.hidden = NO;
+    _externalWindow = window;
+}
+@end
+// ---- End External Display Manager ----
+
 
 @interface AVDisplayCriteria()
 @property(readonly) int videoDynamicRange;
