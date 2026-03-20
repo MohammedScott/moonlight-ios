@@ -708,11 +708,10 @@
 }
 
 - (BOOL)prefersPointerLocked {
-    // Pointer lock breaks the UIKit mouse APIs, which is a problem because
-    // GCMouse is horribly broken on iOS 14.0 for certain mice. Only lock
-    // the cursor if there is a GCMouse present.
-    return [GCMouse mice].count > 0;
+    // Always lock pointer when streaming for clean cursor hiding
+    return YES;
 }
+
 #endif
 
 - (void)viewWillDisappear:(BOOL)animated {
@@ -721,11 +720,5 @@
     // Stop external display when stream ends
     [[ExternalDisplayManager shared] stopMonitoring];
 }
-
-// Lock and hide the mouse cursor completely
-- (BOOL)prefersPointerLocked {
-    return YES;
-}
-
 
 @end
