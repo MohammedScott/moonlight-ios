@@ -731,9 +731,5 @@
     return YES;
 }
 
-- (BOOL)prefersPointerLocked {
-    return YES;
-}
-
 
 @end
