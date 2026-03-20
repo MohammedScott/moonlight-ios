@@ -20,12 +20,6 @@ jobs:
         with:
           xcode-version: '16.2'
 
-      - name: Install CocoaPods dependencies
-        run: |
-          sudo gem install cocoapods
-          pod install --repo-update
-        continue-on-error: true
-
       - name: Build app
         run: |
           xcodebuild \
