@@ -20,6 +20,12 @@ jobs:
         with:
           xcode-version: '16.2'
 
+      - name: Force Xcode 16.2 only
+        run: |
+          sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
+          sudo rm -rf /Applications/Xcode.app
+          xcodebuild -version
+
       - name: Build app
         run: |
           xcodebuild \
