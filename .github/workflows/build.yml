@@ -19,10 +19,13 @@ jobs:
         with:
           xcode-version: latest-stable
 
+      - name: Find Xcode project
+        run: find . -name "*.xcworkspace" -o -name "*.xcodeproj" | head -20
+
       - name: Build app
         run: |
           xcodebuild \
-            -workspace Moonlight.xcworkspace \
+            -project Moonlight.xcodeproj \
             -scheme Moonlight \
             -configuration Debug \
             -sdk iphonesimulator \
