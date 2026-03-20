@@ -198,8 +198,6 @@
 #endif
 }
 
-}
-
 #if TARGET_OS_TV
 - (void)controllerPauseButtonPressed:(id)sender { }
 - (void)controllerPauseButtonDoublePressed:(id)sender {
@@ -513,7 +511,7 @@
     dispatch_async(dispatch_get_main_queue(), ^{
 
         [[ExternalDisplayManager shared] showStreamingScreen];
-        
+
         // Leave the spinner spinning until it's obscured by
         // the first frame of video.
         self->_stageLabel.hidden = YES;
