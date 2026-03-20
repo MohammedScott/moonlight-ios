@@ -77,6 +77,14 @@
 
 - (void)viewDidLoad
 {
+    // Hide cursor completely when streaming
+    if (@available(iOS 14.0, *)) {
+    [self setNeedsUpdateOfPrefersPointerLocked];
+    }
+
+    // Start external display monitoring
+    [[ExternalDisplayManager shared] startMonitoring];
+    
     [super viewDidLoad];
     
     [self.navigationController setNavigationBarHidden:YES animated:YES];
@@ -710,5 +718,22 @@
     return [GCMouse mice].count > 0;
 }
 #endif
+
+- (void)viewWillDisappear:(BOOL)animated {
+    [super viewWillDisappear:animated];
+    
+    // Stop external display when stream ends
+    [[ExternalDisplayManager shared] stopMonitoring];
+}
+
+// Lock and hide the mouse cursor completely
+- (BOOL)prefersPointerLocked {
+    return YES;
+}
+
+- (BOOL)prefersPointerLocked {
+    return YES;
+}
+
 
 @end
