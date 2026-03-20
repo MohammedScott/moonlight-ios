@@ -263,49 +263,27 @@ BOOL isCustomResolution(CGSize res) {
     [self.bitrateSlider setValue:[self getSliderValueForBitrate:_bitrate] animated:YES];
     [self.bitrateSlider addTarget:self action:@selector(bitrateSliderMoved) forControlEvents:UIControlEventValueChanged];
 
+    // Reverse Scroll Toggle
+    self.reverseScrollSelector = [[UISegmentedControl alloc] initWithItems:@[@"Off", @"On"]];
+    [self.reverseScrollSelector setSelectedSegmentIndex:currentSettings.reverseScrollDirection ? 1 : 0];
+    self.reverseScrollSelector.translatesAutoresizingMaskIntoConstraints = NO;
+
     UILabel *reverseScrollLabel = [[UILabel alloc] init];
-reverseScrollLabel.text = @"Reverse Scroll Direction";
-reverseScrollLabel.textColor = [UIColor labelColor];
-reverseScrollLabel.font = [UIFont systemFontOfSize:16];
-reverseScrollLabel.translatesAutoresizingMaskIntoConstraints = NO;
+    reverseScrollLabel.text = @"Reverse Scroll Direction";
+    reverseScrollLabel.textColor = [UIColor labelColor];
+    reverseScrollLabel.font = [UIFont systemFontOfSize:14];
+    reverseScrollLabel.translatesAutoresizingMaskIntoConstraints = NO;
 
-self.reverseScrollSelector = [[UISegmentedControl alloc] initWithItems:@[@"Off", @"On"]];
-[self.reverseScrollSelector setSelectedSegmentIndex:currentSettings.reverseScrollDirection ? 1 : 0];
-self.reverseScrollSelector.translatesAutoresizingMaskIntoConstraints = NO;
+    [self.view addSubview:reverseScrollLabel];
+    [self.view addSubview:self.reverseScrollSelector];
 
-UIStackView *reverseScrollStack = [[UIStackView alloc] initWithArrangedSubviews:@[reverseScrollLabel, self.reverseScrollSelector]];
-reverseScrollStack.axis = UILayoutConstraintAxisHorizontal;
-reverseScrollStack.distribution = UIStackViewDistributionEqualSpacing;
-reverseScrollStack.alignment = UIStackViewAlignmentCenter;
-reverseScrollStack.translatesAutoresizingMaskIntoConstraints = NO;
+    [NSLayoutConstraint activateConstraints:@[
+        [reverseScrollLabel.topAnchor constraintEqualToAnchor:self.statsOverlaySelector.bottomAnchor constant:20],
+        [reverseScrollLabel.leadingAnchor constraintEqualToAnchor:self.statsOverlaySelector.leadingAnchor],
+        [self.reverseScrollSelector.centerYAnchor constraintEqualToAnchor:reverseScrollLabel.centerYAnchor],
+        [self.reverseScrollSelector.trailingAnchor constraintEqualToAnchor:self.statsOverlaySelector.trailingAnchor],
+    ]];
 
-UIView *contentView = self.scrollView.subviews.firstObject;
-[contentView addSubview:reverseScrollStack];
-
-UIView *lastView = self.statsOverlaySelector;
-// Reverse Scroll Toggle
-self.reverseScrollSelector = [[UISegmentedControl alloc] initWithItems:@[@"Off", @"On"]];
-[self.reverseScrollSelector setSelectedSegmentIndex:currentSettings.reverseScrollDirection ? 1 : 0];
-self.reverseScrollSelector.translatesAutoresizingMaskIntoConstraints = NO;
-
-UILabel *reverseScrollLabel = [[UILabel alloc] init];
-reverseScrollLabel.text = @"Reverse Scroll Direction";
-reverseScrollLabel.textColor = [UIColor labelColor];
-reverseScrollLabel.font = [UIFont systemFontOfSize:14];
-reverseScrollLabel.translatesAutoresizingMaskIntoConstraints = NO;
-
-// Add directly to self.view for reliable positioning
-[self.view addSubview:reverseScrollLabel];
-[self.view addSubview:self.reverseScrollSelector];
-
-[NSLayoutConstraint activateConstraints:@[
-    [reverseScrollLabel.topAnchor constraintEqualToAnchor:self.statsOverlaySelector.bottomAnchor constant:20],
-    [reverseScrollLabel.leadingAnchor constraintEqualToAnchor:self.statsOverlaySelector.leadingAnchor],
-    
-    [self.reverseScrollSelector.centerYAnchor constraintEqualToAnchor:reverseScrollLabel.centerYAnchor],
-    [self.reverseScrollSelector.trailingAnchor constraintEqualToAnchor:self.statsOverlaySelector.trailingAnchor],
-]];
-    
     [self updateBitrateText];
     [self updateResolutionDisplayViewText];
 }

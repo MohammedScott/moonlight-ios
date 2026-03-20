@@ -795,14 +795,6 @@
 #endif
 }
 
-- (void)mousePresenceChanged {
-#if !TARGET_OS_TV
-    if (@available(iOS 14.0, *)) {
-        [self setNeedsUpdateOfPrefersPointerLocked];
-    }
-#endif
-}
-
 - (void) streamExitRequested {
     Log(LOG_I, @"Gamepad combo requested stream exit");
     
