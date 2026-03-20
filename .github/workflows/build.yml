@@ -29,4 +29,17 @@ jobs:
             -scheme Moonlight \
             -configuration Debug \
             -sdk iphonesimulator \
-            CODE_SIGNING_ALLOWED=NO
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 || true
+
+      - name: Show errors only
+        run: |
+          xcodebuild \
+            -project Moonlight.xcodeproj \
+            -scheme Moonlight \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'platform=iOS Simulator,name=iPhone 16' \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | grep -E "^.*error:.*$" | head -30
