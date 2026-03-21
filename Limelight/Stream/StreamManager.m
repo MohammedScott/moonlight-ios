@@ -38,6 +38,8 @@
 }
 
 - (void)main {
+    // Boost thread priority for lower latency
+    [NSThread setThreadPriority:1.0];
     [CryptoManager generateKeyPairUsingSSL];
     
     HttpManager* hMan = [[HttpManager alloc] initWithAddress:_config.host httpsPort:_config.httpsPort

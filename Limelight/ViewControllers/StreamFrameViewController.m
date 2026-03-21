@@ -390,6 +390,7 @@ vc.view.frame = CGRectMake(0, 0, screen.bounds.size.width, screen.bounds.size.he
                                             renderView:_streamView
                                    connectionCallbacks:self];
     NSOperationQueue* opQueue = [[NSOperationQueue alloc] init];
+    opQueue.qualityOfService = NSQualityOfServiceUserInteractive;
     [opQueue addOperation:_streamMan];
     
     [[NSNotificationCenter defaultCenter] addObserver:self

@@ -266,18 +266,20 @@ void ArDecodeAndPlaySample(char* sampleData, int sampleLength)
     
     // Don't queue if there's already more than 30 ms of audio data waiting
     // in Moonlight's audio queue.
-    if (LiGetPendingAudioDuration() > 30) {
-        return;
-    }
+// Reduce audio buffer to 10ms for lower latency
+if (LiGetPendingAudioDuration() > 10) {
+    return;
+}
     
     decodeLen = opus_multistream_decode(opusDecoder, (unsigned char *)sampleData, sampleLength,
                                         (short*)audioBuffer, audioConfig.samplesPerFrame, 0);
     if (decodeLen > 0) {
         // Provide backpressure on the queue to ensure too many frames don't build up
         // in SDL's audio queue.
-        while (SDL_GetQueuedAudioSize(audioDevice) / audioFrameSize > 10) {
-            SDL_Delay(1);
-        }
+// Reduce SDL audio queue depth for lower latency
+while (SDL_GetQueuedAudioSize(audioDevice) / audioFrameSize > 4) {
+    SDL_Delay(1);
+}
         
         if (SDL_QueueAudio(audioDevice,
                            audioBuffer,
@@ -428,29 +430,31 @@ void ClSetControllerLED(uint16_t controllerNumber, uint8_t r, uint8_t g, uint8_t
     // need to check for that here.
     _streamConfig.encryptionFlags = ENCFLG_ALL;
     
-    if ([Utils isActiveNetworkVPN]) {
-        // Force remote streaming mode when a VPN is connected
-        _streamConfig.streamingRemotely = STREAM_CFG_REMOTE;
-        _streamConfig.packetSize = 1024;
-    }
-    else {
-        // Detect remote streaming automatically based on the IP address of the target
-        _streamConfig.streamingRemotely = STREAM_CFG_AUTO;
-        _streamConfig.packetSize = 1392;
-    }
+if ([Utils isActiveNetworkVPN]) {
+    // Force remote streaming mode when a VPN is connected
+    _streamConfig.streamingRemotely = STREAM_CFG_REMOTE;
+    // Tailscale supports larger MTU than standard VPNs
+    // 1392 gives better throughput with less overhead
+    _streamConfig.packetSize = 1392;
+}
+else {
+    _streamConfig.streamingRemotely = STREAM_CFG_AUTO;
+    _streamConfig.packetSize = 1392;
+}
 
     memcpy(_streamConfig.remoteInputAesKey, [config.riKey bytes], [config.riKey length]);
     memset(_streamConfig.remoteInputAesIv, 0, 16);
     int riKeyId = htonl(config.riKeyId);
     memcpy(_streamConfig.remoteInputAesIv, &riKeyId, sizeof(riKeyId));
 
-    LiInitializeVideoCallbacks(&_drCallbacks);
-    _drCallbacks.setup = DrDecoderSetup;
-    _drCallbacks.start = DrStart;
-    _drCallbacks.stop = DrStop;
-    _drCallbacks.capabilities = CAPABILITY_PULL_RENDERER |
-                                CAPABILITY_REFERENCE_FRAME_INVALIDATION_HEVC |
-                                CAPABILITY_REFERENCE_FRAME_INVALIDATION_AV1;
+LiInitializeVideoCallbacks(&_drCallbacks);
+_drCallbacks.setup = DrDecoderSetup;
+_drCallbacks.start = DrStart;
+_drCallbacks.stop = DrStop;
+_drCallbacks.capabilities = CAPABILITY_PULL_RENDERER |
+                            CAPABILITY_REFERENCE_FRAME_INVALIDATION_HEVC |
+                            CAPABILITY_REFERENCE_FRAME_INVALIDATION_AV1 |
+                            CAPABILITY_SLOW_OPUS_DECODER;
 
     LiInitializeAudioCallbacks(&_arCallbacks);
     _arCallbacks.init = ArInit;
