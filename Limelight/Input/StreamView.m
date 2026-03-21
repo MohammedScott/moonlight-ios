@@ -63,10 +63,8 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
     [self addSubview:keyInputField];
     
 #if TARGET_OS_TV
-    // tvOS requires RelativeTouchHandler to manage Apple Remote input
     self->touchHandler = [[RelativeTouchHandler alloc] initWithView:self];
 #else
-    // iOS uses RelativeTouchHandler or AbsoluteTouchHandler depending on user preference
     if (settings.absoluteTouchMode) {
         self->touchHandler = [[AbsoluteTouchHandler alloc] initWithView:self];
     }
@@ -95,6 +93,32 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
     if (@available(iOS 13.4, *)) {
         [self addInteraction:[[UIPointerInteraction alloc] initWithDelegate:self]];
         
+        if (@available(iOS 14.0, *)) {
+            void (^setupMouseHandler)(GCMouse*) = ^(GCMouse *mouse) {
+                mouse.mouseInput.mouseMovedHandler = ^(GCMouseInput *input,
+                                                       float deltaX, float deltaY) {
+                    BOOL disableSmoothing = [[NSUserDefaults standardUserDefaults]
+                                             boolForKey:@"disableMouseSmoothing"];
+                    if (disableSmoothing) {
+                        dispatch_async(dispatch_get_main_queue(), ^{
+                            LiSendMouseMoveEvent((short)deltaX, (short)-deltaY);
+                        });
+                    }
+                };
+            };
+            
+            if ([GCMouse current] != nil) {
+                setupMouseHandler([GCMouse current]);
+            }
+            
+            [[NSNotificationCenter defaultCenter]
+                addObserverForName:GCMouseDidConnectNotification
+                object:nil
+                queue:[NSOperationQueue mainQueue]
+                usingBlock:^(NSNotification *note) {
+                    setupMouseHandler((GCMouse *)note.object);
+                }];
+        }
         
         UIPanGestureRecognizer *discreteMouseWheelRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(mouseWheelMovedDiscrete:)];
         discreteMouseWheelRecognizer.maximumNumberOfTouches = 0;
@@ -125,8 +149,6 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
         [x1mouse start];
     }
     
-    // This is critical to ensure keyboard events are delivered to this
-    // StreamView and not our parent UIView, especially on tvOS.
     [self becomeFirstResponder];
 }
 

@@ -61,7 +61,14 @@
             // Turn off iPhone screen if setting enabled
             BOOL turnOff = [[NSUserDefaults standardUserDefaults] boolForKey:@"turnOffScreenOnMonitor"];
             if (turnOff) {
-                [[UIScreen mainScreen] setBrightness:0.0];
+                UIWindow *keyWindow = UIApplication.sharedApplication.keyWindow;
+                UIView *blackout = [[UIView alloc] initWithFrame:keyWindow.bounds];
+                blackout.backgroundColor = [UIColor blackColor];
+                blackout.tag = 8888;
+                blackout.userInteractionEnabled = NO;
+                blackout.autoresizingMask = 
+                    UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+                [keyWindow addSubview:blackout];
             }
         });
     }
@@ -91,8 +98,9 @@
         [_renderer setExternalDisplayLayer:nil];
     }
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Restore iPhone brightness when stream ends
-        [[UIScreen mainScreen] setBrightness:0.5];
+        // Remove black overlay when stream ends
+        UIWindow *keyWindow = UIApplication.sharedApplication.keyWindow;
+        [[keyWindow viewWithTag:8888] removeFromSuperview];
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
         self->_externalLayer = nil;
