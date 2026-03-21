@@ -37,11 +37,12 @@
     UIWindow *_externalWindow;
     UILabel *_subtitleLabel;
     UIActivityIndicatorView *_spinner;
-    __weak UIView *_streamView;
-    __weak UIViewController *_hostVC;
+    UIView *_streamView;
+    UIViewController *_hostVC;
     UIView *_placeholderView;
     CGRect _originalStreamFrame;
     UIView *_originalStreamParent;
+    BOOL _streamingActive;
 }
 
 + (instancetype)shared {
@@ -126,7 +127,7 @@
         [vc.view addSubview:self->_spinner];
         [vc.view addSubview:waitLabel];
         
-        [NSLayoutConstraint activateConstraints:@[
+  [NSLayoutConstraint activateConstraints:@[
             [iconView.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
             [iconView.centerYAnchor constraintEqualToAnchor:vc.view.centerYAnchor constant:-80],
             [iconView.widthAnchor constraintEqualToConstant:100],
@@ -136,24 +137,35 @@
             [waitLabel.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
             [waitLabel.topAnchor constraintEqualToAnchor:self->_spinner.bottomAnchor constant:16],
         ]];
+        
+        // If stream already active, move it to monitor immediately
+        if (self->_streamingActive) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
+                (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [self showStreamingScreen];
+            });
+        }
     });
 }
 
 - (void)showStreamingScreen {
-    if (!_externalWindow || !_streamView) return;
+    _streamingActive = YES;
+    
+    if (!_externalWindow) return;
+    if (!_streamView) return;
     
     dispatch_async(dispatch_get_main_queue(), ^{
         UIViewController *vc = self->_externalWindow.rootViewController;
         if (!vc) return;
         
-        // Save original position
+        // Save original state
         self->_originalStreamFrame = self->_streamView.frame;
         self->_originalStreamParent = self->_streamView.superview;
         
         // Show placeholder on iPhone
         self->_placeholderView = [[UIView alloc] initWithFrame:self->_hostVC.view.bounds];
         self->_placeholderView.backgroundColor = [UIColor blackColor];
-        self->_placeholderView.autoresizingMask = 
+        self->_placeholderView.autoresizingMask =
             UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         
         UILabel *label = [[UILabel alloc] init];
@@ -170,30 +182,31 @@
         
         [self->_placeholderView addSubview:label];
         [self->_placeholderView addSubview:sublabel];
-        
         [NSLayoutConstraint activateConstraints:@[
             [label.centerXAnchor constraintEqualToAnchor:self->_placeholderView.centerXAnchor],
             [label.centerYAnchor constraintEqualToAnchor:self->_placeholderView.centerYAnchor],
             [sublabel.centerXAnchor constraintEqualToAnchor:self->_placeholderView.centerXAnchor],
             [sublabel.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8],
         ]];
-        
         [self->_hostVC.view addSubview:self->_placeholderView];
         
-        // Move stream view to external display — FULLSCREEN
+        // Move streamView to fill external monitor completely
+        self->_streamView.translatesAutoresizingMaskIntoConstraints = YES;
         [vc.view addSubview:self->_streamView];
-        self->_streamView.translatesAutoresizingMaskIntoConstraints = NO;
-        [NSLayoutConstraint activateConstraints:@[
-           [self->_streamView.topAnchor constraintEqualToAnchor:vc.view.topAnchor],
-           [self->_streamView.bottomAnchor constraintEqualToAnchor:vc.view.bottomAnchor],
-           [self->_streamView.leadingAnchor constraintEqualToAnchor:vc.view.leadingAnchor],
-           [self->_streamView.trailingAnchor constraintEqualToAnchor:vc.view.trailingAnchor],
-]];
-[vc.view layoutIfNeeded];
+        self->_streamView.frame = vc.view.bounds;
+        self->_streamView.autoresizingMask =
+            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         
-        // Stop spinner
+        // Force layout
+        [vc.view setNeedsLayout];
+        [vc.view layoutIfNeeded];
+        
+        // Hide waiting UI
         [self->_spinner stopAnimating];
         self->_spinner.hidden = YES;
+        
+        NSLog(@"Stream view moved to external display: %@",
+              NSStringFromCGRect(self->_streamView.frame));
     });
 }
 
