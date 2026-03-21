@@ -97,7 +97,7 @@ if (@available(iOS 14.0, *)) {
     void (^setupMouseHandler)(GCMouse*) = ^(GCMouse *mouse) {
         mouse.mouseInput.mouseMovedHandler = ^(GCMouseInput *input,
                                                float deltaX, float deltaY) {
-            dispatch_async(dispatch_get_main_queue(), ^{
+dispatch_async(dispatch_get_main_queue(), ^{
                 LiSendMouseMoveEvent((short)deltaX, (short)-deltaY);
             });
         };
@@ -115,19 +115,6 @@ if (@available(iOS 14.0, *)) {
             setupMouseHandler((GCMouse *)note.object);
         }];
 }
-            
-            if ([GCMouse current] != nil) {
-                setupMouseHandler([GCMouse current]);
-            }
-            
-            [[NSNotificationCenter defaultCenter]
-                addObserverForName:GCMouseDidConnectNotification
-                object:nil
-                queue:[NSOperationQueue mainQueue]
-                usingBlock:^(NSNotification *note) {
-                    setupMouseHandler((GCMouse *)note.object);
-                }];
-        }
         
         UIPanGestureRecognizer *discreteMouseWheelRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(mouseWheelMovedDiscrete:)];
         discreteMouseWheelRecognizer.maximumNumberOfTouches = 0;
