@@ -157,6 +157,11 @@
     });
 }
 
+- (void)rendererReady:(NSNotification *)note {
+    id renderer = note.object;
+    [self setRenderer:renderer];
+}
+
 @end
 // ---- End External Display Manager ----
 
@@ -866,11 +871,6 @@
     // Stop external display when stream ends
     [[ExternalDisplayManager shared] stopMonitoring];
 
-}
-
-- (void)rendererReady:(NSNotification *)note {
-    id renderer = note.object;
-    [self setRenderer:renderer];
 }
 
 @end
