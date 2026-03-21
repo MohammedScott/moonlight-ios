@@ -58,6 +58,12 @@
 }
 
 - (void)startMonitoring {
+    
+    // Listen for renderer ready notification
+    [[NSNotificationCenter defaultCenter] addObserver:self
+        selector:@selector(rendererReady:)
+        name:@"MoonlightRendererReady" object:nil];
+
     if (UIScreen.screens.count > 1) {
         [self handleScreenConnected:UIScreen.screens[1]];
     }
@@ -860,6 +866,11 @@
     // Stop external display when stream ends
     [[ExternalDisplayManager shared] stopMonitoring];
 
+}
+
+- (void)rendererReady:(NSNotification *)note {
+    id renderer = note.object;
+    [self setRenderer:renderer];
 }
 
 @end
