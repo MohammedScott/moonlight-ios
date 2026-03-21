@@ -28,21 +28,16 @@
 // ---- External Display Manager ----
 @interface ExternalDisplayManager : NSObject
 + (instancetype)shared;
-- (void)startMonitoringWithStreamView:(UIView *)streamView 
+- (void)startMonitoringWithStreamView:(UIView *)streamView
                      hostViewController:(UIViewController *)hostVC;
 - (void)stopMonitoring;
+- (void)showStreamingScreen;
 @end
 
 @implementation ExternalDisplayManager {
     UIWindow *_externalWindow;
-    UILabel *_subtitleLabel;
     UIActivityIndicatorView *_spinner;
-    UIView *_streamView;
-    UIViewController *_hostVC;
-    UIView *_placeholderView;
-    CGRect _originalStreamFrame;
-    UIView *_originalStreamParent;
-    BOOL _streamingActive;
+    UILabel *_waitLabel;
 }
 
 + (instancetype)shared {
@@ -52,11 +47,8 @@
     return instance;
 }
 
-- (void)startMonitoringWithStreamView:(UIView *)streamView 
+- (void)startMonitoringWithStreamView:(UIView *)streamView
                      hostViewController:(UIViewController *)hostVC {
-    _streamView = streamView;
-    _hostVC = hostVC;
-    
     if (UIScreen.screens.count > 1) {
         [self handleScreenConnected:UIScreen.screens[1]];
     }
@@ -70,7 +62,6 @@
 
 - (void)stopMonitoring {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [self restoreStreamViewToiPhone];
     dispatch_async(dispatch_get_main_queue(), ^{
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
@@ -85,7 +76,6 @@
 }
 
 - (void)screenDidDisconnect:(NSNotification *)note {
-    [self restoreStreamViewToiPhone];
     dispatch_async(dispatch_get_main_queue(), ^{
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
@@ -94,7 +84,7 @@
 
 - (void)handleScreenConnected:(UIScreen *)screen {
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Create fullscreen window on external display
+        // Create window on external display
         UIWindow *window = [[UIWindow alloc] initWithFrame:screen.bounds];
         window.screen = screen;
         window.backgroundColor = [UIColor blackColor];
@@ -102,128 +92,44 @@
         UIViewController *vc = [UIViewController new];
         vc.view.backgroundColor = [UIColor blackColor];
         window.rootViewController = vc;
-        window.hidden = NO;
-        self->_externalWindow = window;
         
-        // Show waiting screen on external display
-        UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppIcon"]];
-        iconView.contentMode = UIViewContentModeScaleAspectFit;
-        iconView.layer.cornerRadius = 20;
-        iconView.clipsToBounds = YES;
-        iconView.translatesAutoresizingMaskIntoConstraints = NO;
-        
-        UILabel *waitLabel = [[UILabel alloc] init];
-        waitLabel.text = @"Waiting for stream...";
-        waitLabel.textColor = [UIColor whiteColor];
-        waitLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightLight];
-        waitLabel.translatesAutoresizingMaskIntoConstraints = NO;
-        
-        self->_spinner = [[UIActivityIndicatorView alloc] 
+        // Simple waiting UI
+        self->_spinner = [[UIActivityIndicatorView alloc]
             initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
         self->_spinner.translatesAutoresizingMaskIntoConstraints = NO;
         [self->_spinner startAnimating];
         
-        [vc.view addSubview:iconView];
-        [vc.view addSubview:self->_spinner];
-        [vc.view addSubview:waitLabel];
+        self->_waitLabel = [[UILabel alloc] init];
+        self->_waitLabel.text = @"Waiting for stream...";
+        self->_waitLabel.textColor = [UIColor whiteColor];
+        self->_waitLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightLight];
+        self->_waitLabel.translatesAutoresizingMaskIntoConstraints = NO;
         
-  [NSLayoutConstraint activateConstraints:@[
-            [iconView.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
-            [iconView.centerYAnchor constraintEqualToAnchor:vc.view.centerYAnchor constant:-80],
-            [iconView.widthAnchor constraintEqualToConstant:100],
-            [iconView.heightAnchor constraintEqualToConstant:100],
+        [vc.view addSubview:self->_spinner];
+        [vc.view addSubview:self->_waitLabel];
+        
+        [NSLayoutConstraint activateConstraints:@[
             [self->_spinner.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
-            [self->_spinner.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:24],
-            [waitLabel.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
-            [waitLabel.topAnchor constraintEqualToAnchor:self->_spinner.bottomAnchor constant:16],
+            [self->_spinner.centerYAnchor constraintEqualToAnchor:vc.view.centerYAnchor constant:-20],
+            [self->_waitLabel.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
+            [self->_waitLabel.topAnchor constraintEqualToAnchor:self->_spinner.bottomAnchor constant:16],
         ]];
         
-        // If stream already active, move it to monitor immediately
-        if (self->_streamingActive) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
-                (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [self showStreamingScreen];
-            });
-        }
+        window.hidden = NO;
+        self->_externalWindow = window;
     });
 }
 
 - (void)showStreamingScreen {
-    _streamingActive = YES;
-    
-    if (!_externalWindow) return;
-    if (!_streamView) return;
-    
     dispatch_async(dispatch_get_main_queue(), ^{
-        UIViewController *vc = self->_externalWindow.rootViewController;
-        if (!vc) return;
-        
-        // Save original state
-        self->_originalStreamFrame = self->_streamView.frame;
-        self->_originalStreamParent = self->_streamView.superview;
-        
-        // Show placeholder on iPhone
-        self->_placeholderView = [[UIView alloc] initWithFrame:self->_hostVC.view.bounds];
-        self->_placeholderView.backgroundColor = [UIColor blackColor];
-        self->_placeholderView.autoresizingMask =
-            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        
-        UILabel *label = [[UILabel alloc] init];
-        label.text = @"Streaming to external display";
-        label.textColor = [UIColor whiteColor];
-        label.font = [UIFont systemFontOfSize:18 weight:UIFontWeightLight];
-        label.translatesAutoresizingMaskIntoConstraints = NO;
-        
-        UILabel *sublabel = [[UILabel alloc] init];
-        sublabel.text = @"Look at your monitor";
-        sublabel.textColor = [UIColor grayColor];
-        sublabel.font = [UIFont systemFontOfSize:14];
-        sublabel.translatesAutoresizingMaskIntoConstraints = NO;
-        
-        [self->_placeholderView addSubview:label];
-        [self->_placeholderView addSubview:sublabel];
-        [NSLayoutConstraint activateConstraints:@[
-            [label.centerXAnchor constraintEqualToAnchor:self->_placeholderView.centerXAnchor],
-            [label.centerYAnchor constraintEqualToAnchor:self->_placeholderView.centerYAnchor],
-            [sublabel.centerXAnchor constraintEqualToAnchor:self->_placeholderView.centerXAnchor],
-            [sublabel.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8],
-        ]];
-        [self->_hostVC.view addSubview:self->_placeholderView];
-        
-        // Move streamView to fill external monitor completely
-        self->_streamView.translatesAutoresizingMaskIntoConstraints = YES;
-        [vc.view addSubview:self->_streamView];
-        self->_streamView.frame = vc.view.bounds;
-        self->_streamView.autoresizingMask =
-            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        
-        // Force layout
-        [vc.view setNeedsLayout];
-        [vc.view layoutIfNeeded];
-        
-        // Hide waiting UI
+        // Hide our waiting window completely
+        // iOS will now mirror iPhone screen to monitor in fullscreen
+        self->_externalWindow.hidden = YES;
+        self->_externalWindow = nil;
         [self->_spinner stopAnimating];
-        self->_spinner.hidden = YES;
-        
-        NSLog(@"Stream view moved to external display: %@",
-              NSStringFromCGRect(self->_streamView.frame));
     });
 }
 
-- (void)restoreStreamViewToiPhone {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if (self->_streamView && self->_originalStreamParent) {
-            [self->_originalStreamParent addSubview:self->_streamView];
-            self->_streamView.frame = self->_originalStreamFrame;
-        }
-        [self->_placeholderView removeFromSuperview];
-        self->_placeholderView = nil;
-    });
-}
-
-- (void)showWaitingScreen {
-    [self restoreStreamViewToiPhone];
-}
 @end
 // ---- End External Display Manager ----
 
@@ -319,8 +225,8 @@
     [_streamView setupStreamView:_controllerSupport interactionDelegate:self config:self.streamConfig];
     
     // Start external display monitoring AFTER streamView is created
-    [[ExternalDisplayManager shared] startMonitoringWithStreamView:_streamView 
-                                                  hostViewController:self];
+    [[ExternalDisplayManager shared] startMonitoringWithStreamView:nil
+                                              hostViewController:nil];
     
 #if TARGET_OS_TV
     if (!_menuTapGestureRecognizer || !_menuDoubleTapGestureRecognizer || !_playPauseTapGestureRecognizer) {
