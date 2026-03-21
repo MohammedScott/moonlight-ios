@@ -6,6 +6,7 @@
 //  Copyright (c) 2015 Moonlight Stream. All rights reserved.
 //
 
+#import <AVFoundation/AVFoundation.h>
 #import "StreamFrameViewController.h"
 #import "MainFrameViewController.h"
 #import "VideoDecoderRenderer.h"
@@ -28,16 +29,17 @@
 // ---- External Display Manager ----
 @interface ExternalDisplayManager : NSObject
 + (instancetype)shared;
-- (void)startMonitoringWithStreamView:(UIView *)streamView
-                     hostViewController:(UIViewController *)hostVC;
+- (void)startMonitoring;
 - (void)stopMonitoring;
-- (void)showStreamingScreen;
+- (void)setRenderer:(id)renderer;
 @end
 
 @implementation ExternalDisplayManager {
     UIWindow *_externalWindow;
     UIActivityIndicatorView *_spinner;
     UILabel *_waitLabel;
+    AVSampleBufferDisplayLayer *_externalLayer;
+    id _renderer;
 }
 
 + (instancetype)shared {
@@ -47,8 +49,15 @@
     return instance;
 }
 
-- (void)startMonitoringWithStreamView:(UIView *)streamView
-                     hostViewController:(UIViewController *)hostVC {
+- (void)setRenderer:(id)renderer {
+    _renderer = renderer;
+    // If external screen already connected, attach layer immediately
+    if (_externalLayer != nil) {
+        [_renderer setExternalDisplayLayer:_externalLayer];
+    }
+}
+
+- (void)startMonitoring {
     if (UIScreen.screens.count > 1) {
         [self handleScreenConnected:UIScreen.screens[1]];
     }
@@ -62,9 +71,13 @@
 
 - (void)stopMonitoring {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    if (_renderer != nil) {
+        [_renderer setExternalDisplayLayer:nil];
+    }
     dispatch_async(dispatch_get_main_queue(), ^{
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
+        self->_externalLayer = nil;
     });
 }
 
@@ -76,15 +89,19 @@
 }
 
 - (void)screenDidDisconnect:(NSNotification *)note {
+    if (_renderer != nil) {
+        [_renderer setExternalDisplayLayer:nil];
+    }
     dispatch_async(dispatch_get_main_queue(), ^{
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
+        self->_externalLayer = nil;
     });
 }
 
 - (void)handleScreenConnected:(UIScreen *)screen {
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Create window on external display
+        // Create fullscreen window on external display
         UIWindow *window = [[UIWindow alloc] initWithFrame:screen.bounds];
         window.screen = screen;
         window.backgroundColor = [UIColor blackColor];
@@ -93,7 +110,16 @@
         vc.view.backgroundColor = [UIColor blackColor];
         window.rootViewController = vc;
         
-        // Simple waiting UI
+        // Create AVSampleBufferDisplayLayer filling the entire screen
+        AVSampleBufferDisplayLayer *layer = [[AVSampleBufferDisplayLayer alloc] init];
+        layer.frame = vc.view.bounds;
+        layer.videoGravity = AVLayerVideoGravityResizeAspect;
+        layer.backgroundColor = [UIColor blackColor].CGColor;
+        layer.hidden = YES;
+        [vc.view.layer addSublayer:layer];
+        self->_externalLayer = layer;
+        
+        // Waiting UI
         self->_spinner = [[UIActivityIndicatorView alloc]
             initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
         self->_spinner.translatesAutoresizingMaskIntoConstraints = NO;
@@ -117,15 +143,11 @@
         
         window.hidden = NO;
         self->_externalWindow = window;
-    });
-}
-
-- (void)showStreamingScreen {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        // Hide waiting window
-        self->_externalWindow.hidden = YES;
-        self->_externalWindow = nil;
-        [self->_spinner stopAnimating];
+        
+        // Attach renderer if already streaming
+        if (self->_renderer != nil) {
+            [self->_renderer setExternalDisplayLayer:layer];
+        }
     });
 }
 
@@ -224,8 +246,7 @@
     [_streamView setupStreamView:_controllerSupport interactionDelegate:self config:self.streamConfig];
     
     // Start external display monitoring AFTER streamView is created
-    [[ExternalDisplayManager shared] startMonitoringWithStreamView:nil
-                                              hostViewController:nil];
+    [[ExternalDisplayManager shared] startMonitoring];
     
 #if TARGET_OS_TV
     if (!_menuTapGestureRecognizer || !_menuDoubleTapGestureRecognizer || !_playPauseTapGestureRecognizer) {
@@ -508,7 +529,12 @@
     Log(LOG_I, @"Connection started");
     dispatch_async(dispatch_get_main_queue(), ^{
 
-        [[ExternalDisplayManager shared] showStreamingScreen];
+        // External display handled automatically by renderer
+
+        // Connect renderer to external display
+        if ([self->_streamMan respondsToSelector:@selector(getRenderer)]) {
+            [[ExternalDisplayManager shared] setRenderer:[self->_streamMan getRenderer]];
+        }
 
         // Leave the spinner spinning until it's obscured by
         // the first frame of video.

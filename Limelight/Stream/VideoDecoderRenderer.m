@@ -25,6 +25,7 @@ extern int ff_isom_write_av1c(AVIOContext *pb, const uint8_t *buf, int size,
     float _streamAspectRatio;
     
     AVSampleBufferDisplayLayer* displayLayer;
+    AVSampleBufferDisplayLayer* externalDisplayLayer;
     int videoFormat;
     int frameRate;
     
@@ -36,6 +37,8 @@ extern int ff_isom_write_av1c(AVIOContext *pb, const uint8_t *buf, int size,
     CADisplayLink* _displayLink;
     BOOL framePacing;
 }
+
+
 
 - (void)reinitializeDisplayLayer
 {
@@ -594,12 +597,24 @@ int DrSubmitDecodeUnit(PDECODE_UNIT decodeUnit);
         return DR_NEED_IDR;
     }
 
-    // Enqueue the next frame
+// Enqueue the next frame to iPhone display
     [self->displayLayer enqueueSampleBuffer:sampleBuffer];
+    
+    // Also enqueue to external display if connected
+    if (self->externalDisplayLayer != nil) {
+        if (self->externalDisplayLayer.status == AVQueuedSampleBufferRenderingStatusFailed) {
+            self->externalDisplayLayer = nil;
+        } else {
+            [self->externalDisplayLayer enqueueSampleBuffer:sampleBuffer];
+        }
+    }
     
     if (du->frameType == FRAME_TYPE_IDR) {
         // Ensure the layer is visible now
         self->displayLayer.hidden = NO;
+        if (self->externalDisplayLayer != nil) {
+            self->externalDisplayLayer.hidden = NO;
+        }
         
         // Tell our parent VC to hide the progress indicator
         [self->_callbacks videoContentShown];
@@ -680,5 +695,13 @@ int DrSubmitDecodeUnit(PDECODE_UNIT decodeUnit);
         LiRequestIdrFrame();
     }
 }
+
+- (void)setExternalDisplayLayer:(AVSampleBufferDisplayLayer*)layer {
+    externalDisplayLayer = layer;
+    if (layer != nil) {
+        layer.videoGravity = AVLayerVideoGravityResizeAspect;
+    }
+}
+
 
 @end
