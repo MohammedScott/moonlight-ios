@@ -35,6 +35,8 @@
 @property (nonatomic) BOOL absoluteTouchMode;
 @property (nonatomic) BOOL statsOverlay;
 @property (nonatomic) BOOL reverseScrollDirection;
+@property (nonatomic) BOOL turnOffScreenOnMonitor;
+@property (nonatomic) BOOL disableMouseSmoothing;
 
 - (id) initFromSettings:(Settings*)settings;
 

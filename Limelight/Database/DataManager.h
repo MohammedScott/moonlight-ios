@@ -17,7 +17,7 @@
                        framerate:(NSInteger)framerate
                           height:(NSInteger)height
                            width:(NSInteger)width
-                audioConfig:(NSInteger)audioConfig
+                     audioConfig:(NSInteger)audioConfig
                 onscreenControls:(NSInteger)onscreenControls
                    optimizeGames:(BOOL)optimizeGames
                  multiController:(BOOL)multiController
@@ -29,7 +29,9 @@
                   btMouseSupport:(BOOL)btMouseSupport
                absoluteTouchMode:(BOOL)absoluteTouchMode
                     statsOverlay:(BOOL)statsOverlay
-               reverseScrollDirection:(BOOL)reverseScrollDirection;
+          reverseScrollDirection:(BOOL)reverseScrollDirection
+          turnOffScreenOnMonitor:(BOOL)turnOffScreenOnMonitor
+           disableMouseSmoothing:(BOOL)disableMouseSmoothing;
 
 - (NSArray*) getHosts;
 - (void) updateHost:(TemporaryHost*)host;

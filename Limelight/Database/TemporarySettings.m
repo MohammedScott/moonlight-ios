@@ -86,6 +86,8 @@
     self.absoluteTouchMode = settings.absoluteTouchMode;
     self.statsOverlay = settings.statsOverlay;
     self.reverseScrollDirection = [[NSUserDefaults standardUserDefaults] boolForKey:@"reverseScrollDirection"];
+    self.turnOffScreenOnMonitor = [[NSUserDefaults standardUserDefaults] boolForKey:@"turnOffScreenOnMonitor"];
+    self.disableMouseSmoothing = [[NSUserDefaults standardUserDefaults] boolForKey:@"disableMouseSmoothing"];
 #endif
     self.uniqueId = settings.uniqueId;
     

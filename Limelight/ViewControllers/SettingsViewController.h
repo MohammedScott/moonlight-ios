@@ -27,6 +27,8 @@
 @property (strong, nonatomic) IBOutlet UISegmentedControl *btMouseSelector;
 @property (strong, nonatomic) IBOutlet UISegmentedControl *statsOverlaySelector;
 @property (strong, nonatomic) UISegmentedControl *reverseScrollSelector;
+@property (strong, nonatomic) UISegmentedControl *turnOffScreenSelector;
+@property (strong, nonatomic) UISegmentedControl *disableSmoothingSelector;
 @property (strong, nonatomic) IBOutlet UIScrollView *scrollView;
 
 #pragma clang diagnostic push

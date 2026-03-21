@@ -284,6 +284,49 @@ BOOL isCustomResolution(CGSize res) {
         [self.reverseScrollSelector.trailingAnchor constraintEqualToAnchor:self.statsOverlaySelector.trailingAnchor],
     ]];
 
+    // Turn Off Screen Toggle
+    TemporarySettings *s = currentSettings;
+    self.turnOffScreenSelector = [[UISegmentedControl alloc] initWithItems:@[@"Off", @"On"]];
+    [self.turnOffScreenSelector setSelectedSegmentIndex:s.turnOffScreenOnMonitor ? 1 : 0];
+    self.turnOffScreenSelector.translatesAutoresizingMaskIntoConstraints = NO;
+
+    UILabel *turnOffScreenLabel = [[UILabel alloc] init];
+    turnOffScreenLabel.text = @"Turn Off Screen on Monitor";
+    turnOffScreenLabel.textColor = [UIColor labelColor];
+    turnOffScreenLabel.font = [UIFont systemFontOfSize:14];
+    turnOffScreenLabel.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [self.view addSubview:turnOffScreenLabel];
+    [self.view addSubview:self.turnOffScreenSelector];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [turnOffScreenLabel.topAnchor constraintEqualToAnchor:reverseScrollLabel.bottomAnchor constant:20],
+        [turnOffScreenLabel.leadingAnchor constraintEqualToAnchor:self.statsOverlaySelector.leadingAnchor],
+        [self.turnOffScreenSelector.centerYAnchor constraintEqualToAnchor:turnOffScreenLabel.centerYAnchor],
+        [self.turnOffScreenSelector.trailingAnchor constraintEqualToAnchor:self.statsOverlaySelector.trailingAnchor],
+    ]];
+
+    // Disable Mouse Smoothing Toggle
+    self.disableSmoothingSelector = [[UISegmentedControl alloc] initWithItems:@[@"Off", @"On"]];
+    [self.disableSmoothingSelector setSelectedSegmentIndex:s.disableMouseSmoothing ? 1 : 0];
+    self.disableSmoothingSelector.translatesAutoresizingMaskIntoConstraints = NO;
+
+    UILabel *disableSmoothingLabel = [[UILabel alloc] init];
+    disableSmoothingLabel.text = @"Disable Mouse Smoothing";
+    disableSmoothingLabel.textColor = [UIColor labelColor];
+    disableSmoothingLabel.font = [UIFont systemFontOfSize:14];
+    disableSmoothingLabel.translatesAutoresizingMaskIntoConstraints = NO;
+
+    [self.view addSubview:disableSmoothingLabel];
+    [self.view addSubview:self.disableSmoothingSelector];
+
+    [NSLayoutConstraint activateConstraints:@[
+        [disableSmoothingLabel.topAnchor constraintEqualToAnchor:turnOffScreenLabel.bottomAnchor constant:20],
+        [disableSmoothingLabel.leadingAnchor constraintEqualToAnchor:self.statsOverlaySelector.leadingAnchor],
+        [self.disableSmoothingSelector.centerYAnchor constraintEqualToAnchor:disableSmoothingLabel.centerYAnchor],
+        [self.disableSmoothingSelector.trailingAnchor constraintEqualToAnchor:self.statsOverlaySelector.trailingAnchor],
+    ]];
+
     [self updateBitrateText];
     [self updateResolutionDisplayViewText];
 }
@@ -558,6 +601,8 @@ BOOL isCustomResolution(CGSize res) {
     uint32_t preferredCodec = [self getChosenCodecPreference];
     BOOL btMouseSupport = [self.btMouseSelector selectedSegmentIndex] == 1;
     BOOL reverseScrollDirection = [self.reverseScrollSelector selectedSegmentIndex] == 1;
+    BOOL turnOffScreenOnMonitor = [self.turnOffScreenSelector selectedSegmentIndex] == 1;
+    BOOL disableMouseSmoothing = [self.disableSmoothingSelector selectedSegmentIndex] == 1;
     BOOL useFramePacing = [self.framePacingSelector selectedSegmentIndex] == 1;
     BOOL absoluteTouchMode = [self.touchModeSelector selectedSegmentIndex] == 1;
     BOOL statsOverlay = [self.statsOverlaySelector selectedSegmentIndex] == 1;
@@ -578,7 +623,9 @@ BOOL isCustomResolution(CGSize res) {
                       btMouseSupport:btMouseSupport
                    absoluteTouchMode:absoluteTouchMode
                         statsOverlay:statsOverlay
-              reverseScrollDirection:reverseScrollDirection];
+              reverseScrollDirection:reverseScrollDirection
+              turnOffScreenOnMonitor:turnOffScreenOnMonitor
+               disableMouseSmoothing:disableMouseSmoothing];
 }
 
 - (void)didReceiveMemoryWarning {

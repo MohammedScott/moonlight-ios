@@ -68,7 +68,9 @@
                   btMouseSupport:(BOOL)btMouseSupport
                absoluteTouchMode:(BOOL)absoluteTouchMode
                     statsOverlay:(BOOL)statsOverlay
-          reverseScrollDirection:(BOOL)reverseScrollDirection {
+          reverseScrollDirection:(BOOL)reverseScrollDirection
+          turnOffScreenOnMonitor:(BOOL)turnOffScreenOnMonitor
+           disableMouseSmoothing:(BOOL)disableMouseSmoothing {
     
     [_managedObjectContext performBlockAndWait:^{
         Settings* settingsToSave = [self retrieveSettings];

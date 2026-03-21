@@ -51,9 +51,19 @@
 
 - (void)setRenderer:(id)renderer {
     _renderer = renderer;
-    // If external screen already connected, attach layer immediately
     if (_externalLayer != nil) {
         [_renderer setExternalDisplayLayer:_externalLayer];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self->_spinner stopAnimating];
+            self->_spinner.hidden = YES;
+            self->_waitLabel.hidden = YES;
+            
+            // Turn off iPhone screen if setting enabled
+            BOOL turnOff = [[NSUserDefaults standardUserDefaults] boolForKey:@"turnOffScreenOnMonitor"];
+            if (turnOff) {
+                [[UIScreen mainScreen] setBrightness:0.0];
+            }
+        });
     }
 }
 
@@ -81,6 +91,8 @@
         [_renderer setExternalDisplayLayer:nil];
     }
     dispatch_async(dispatch_get_main_queue(), ^{
+        // Restore iPhone brightness when stream ends
+        [[UIScreen mainScreen] setBrightness:0.5];
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
         self->_externalLayer = nil;

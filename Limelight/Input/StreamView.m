@@ -95,6 +95,7 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
     if (@available(iOS 13.4, *)) {
         [self addInteraction:[[UIPointerInteraction alloc] initWithDelegate:self]];
         
+        
         UIPanGestureRecognizer *discreteMouseWheelRecognizer = [[UIPanGestureRecognizer alloc] initWithTarget:self action:@selector(mouseWheelMovedDiscrete:)];
         discreteMouseWheelRecognizer.maximumNumberOfTouches = 0;
         discreteMouseWheelRecognizer.allowedScrollTypesMask = UIScrollTypeMaskDiscrete;
@@ -635,23 +636,35 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
     CGPoint normalizedLocation = [self adjustCoordinatesForVideoArea:location];
     CGSize videoSize = [self getVideoAreaSize];
     
-    // Send the mouse position relative to the video region if it has changed
-    // if we're receiving coordinates from a real mouse.
-    //
-    // NB: It is important for functionality (not just optimization) to only
-    // send it if the value has changed. We will receive one of these events
-    // any time the user presses a modifier key, which can result in errant
-    // mouse motion when using a Citrix X1 mouse.
-    if (normalizedLocation.x != lastMouseX || normalizedLocation.y != lastMouseY || !isMouse) {
-        if (lastMouseX != 0 || lastMouseY != 0 || !isMouse) {
-            LiSendMousePositionEvent(normalizedLocation.x, normalizedLocation.y, videoSize.width, videoSize.height);
+    if (!isMouse) {
+        // Touch input — laptop trackpad style
+        LiSendMousePositionEvent(normalizedLocation.x, normalizedLocation.y, videoSize.width, videoSize.height);
+        return;
+    }
+    
+    // Check smoothing setting
+    BOOL disableSmoothing = [[NSUserDefaults standardUserDefaults] boolForKey:@"disableMouseSmoothing"];
+    
+    if (disableSmoothing) {
+        // Raw delta — no smoothing
+        if (lastMouseX != 0 || lastMouseY != 0) {
+            short deltaX = (short)(normalizedLocation.x - lastMouseX);
+            short deltaY = (short)(normalizedLocation.y - lastMouseY);
+            if (deltaX != 0 || deltaY != 0) {
+                LiSendMouseMoveEvent(deltaX, deltaY);
+            }
         }
-        
-        if (isMouse) {
-            lastMouseX = normalizedLocation.x;
-            lastMouseY = normalizedLocation.y;
+    } else {
+        // Standard absolute positioning
+        if (normalizedLocation.x != lastMouseX || normalizedLocation.y != lastMouseY) {
+            if (lastMouseX != 0 || lastMouseY != 0) {
+                LiSendMousePositionEvent(normalizedLocation.x, normalizedLocation.y, videoSize.width, videoSize.height);
+            }
         }
     }
+    
+    lastMouseX = normalizedLocation.x;
+    lastMouseY = normalizedLocation.y;
 }
 
 - (UIPointerRegion *)pointerInteraction:(UIPointerInteraction *)interaction
