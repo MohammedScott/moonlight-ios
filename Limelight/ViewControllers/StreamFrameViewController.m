@@ -61,15 +61,30 @@
             // Turn off iPhone screen if setting enabled
             BOOL turnOff = [[NSUserDefaults standardUserDefaults] boolForKey:@"turnOffScreenOnMonitor"];
             if (turnOff) {
-                UIWindow *keyWindow = UIApplication.sharedApplication.keyWindow;
-                UIView *blackout = [[UIView alloc] initWithFrame:keyWindow.bounds];
-                blackout.backgroundColor = [UIColor blackColor];
-                blackout.tag = 8888;
-                blackout.userInteractionEnabled = NO;
-                blackout.autoresizingMask = 
-                    UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-                [keyWindow addSubview:blackout];
+                // Get window more reliably on iOS 13+
+                UIWindow *keyWindow = nil;
+                for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                    if ([scene isKindOfClass:[UIWindowScene class]]) {
+                        UIWindowScene *windowScene = (UIWindowScene *)scene;
+                        for (UIWindow *window in windowScene.windows) {
+                            if (window.isKeyWindow) {
+                                keyWindow = window;
+                                break;
+                            }
+                        }
             }
+    }
+    
+    if (keyWindow && [keyWindow viewWithTag:8888] == nil) {
+        UIView *blackout = [[UIView alloc] initWithFrame:keyWindow.bounds];
+        blackout.backgroundColor = [UIColor blackColor];
+        blackout.tag = 8888;
+        blackout.userInteractionEnabled = NO;
+        blackout.autoresizingMask =
+            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        [keyWindow addSubview:blackout];
+    }
+}
         });
     }
 }
@@ -99,7 +114,18 @@
     }
     dispatch_async(dispatch_get_main_queue(), ^{
         // Remove black overlay when stream ends
-        UIWindow *keyWindow = UIApplication.sharedApplication.keyWindow;
+        UIWindow *keyWindow = nil;
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:[UIWindowScene class]]) {
+                UIWindowScene *windowScene = (UIWindowScene *)scene;
+                for (UIWindow *window in windowScene.windows) {
+                    if (window.isKeyWindow) {
+                        keyWindow = window;
+                        break;
+                    }
+                }
+            }
+        }
         [[keyWindow viewWithTag:8888] removeFromSuperview];
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;

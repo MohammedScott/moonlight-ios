@@ -93,19 +93,24 @@ static const double X1_MOUSE_SPEED_DIVISOR = 2.5;
     if (@available(iOS 13.4, *)) {
         [self addInteraction:[[UIPointerInteraction alloc] initWithDelegate:self]];
         
-        if (@available(iOS 14.0, *)) {
-            void (^setupMouseHandler)(GCMouse*) = ^(GCMouse *mouse) {
-                mouse.mouseInput.mouseMovedHandler = ^(GCMouseInput *input,
-                                                       float deltaX, float deltaY) {
-                    BOOL disableSmoothing = [[NSUserDefaults standardUserDefaults]
-                                             boolForKey:@"disableMouseSmoothing"];
-                    if (disableSmoothing) {
-                        dispatch_async(dispatch_get_main_queue(), ^{
-                            LiSendMouseMoveEvent((short)deltaX, (short)-deltaY);
-                        });
-                    }
-                };
-            };
+if (@available(iOS 14.0, *)) {
+    void (^setupMouseHandler)(GCMouse*) = ^(GCMouse *mouse) {
+        mouse.mouseInput.mouseMovedHandler = ^(GCMouseInput *input,
+                                               float deltaX, float deltaY) {
+            BOOL disableSmoothing = [[NSUserDefaults standardUserDefaults]
+                                     boolForKey:@"disableMouseSmoothing"];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (disableSmoothing) {
+                    // Raw delta — no smoothing
+                    LiSendMouseMoveEvent((short)deltaX, (short)-deltaY);
+                } else {
+                    // Accumulate and send as position
+                    // GCMouse is always used when connected for consistency
+                    LiSendMouseMoveEvent((short)deltaX, (short)-deltaY);
+                }
+            });
+        };
+    };
             
             if ([GCMouse current] != nil) {
                 setupMouseHandler([GCMouse current]);
