@@ -1,4 +1,4 @@
-# Moonlight Plus 🌙
+# Moonlight - iOS Monitor Support 🌙
 
 A fork of [Moonlight iOS](https://github.com/moonlight-stream/moonlight-ios) 
 with extra features for power users.
