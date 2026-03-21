@@ -39,7 +39,6 @@ focused on external monitor support and power user features.
 ## 💡 Tips
 
 - Use **Tailscale** for low latency streaming when abroad
-- Turn off **Frame Pacing** in settings for lowest latency
 - Use **H.264** codec for fastest decode on iPhone
 - Enable **Touchpad Mode** in settings when connected to a monitor
 
