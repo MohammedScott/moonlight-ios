@@ -28,17 +28,20 @@
 // ---- External Display Manager ----
 @interface ExternalDisplayManager : NSObject
 + (instancetype)shared;
-- (void)startMonitoring;
+- (void)startMonitoringWithStreamView:(UIView *)streamView 
+                     hostViewController:(UIViewController *)hostVC;
 - (void)stopMonitoring;
-- (void)showStreamingScreen;
-- (void)showWaitingScreen;
 @end
 
 @implementation ExternalDisplayManager {
     UIWindow *_externalWindow;
-    UILabel *_statusLabel;
     UILabel *_subtitleLabel;
     UIActivityIndicatorView *_spinner;
+    __weak UIView *_streamView;
+    __weak UIViewController *_hostVC;
+    UIView *_placeholderView;
+    CGRect _originalStreamFrame;
+    UIView *_originalStreamParent;
 }
 
 + (instancetype)shared {
@@ -48,7 +51,11 @@
     return instance;
 }
 
-- (void)startMonitoring {
+- (void)startMonitoringWithStreamView:(UIView *)streamView 
+                     hostViewController:(UIViewController *)hostVC {
+    _streamView = streamView;
+    _hostVC = hostVC;
+    
     if (UIScreen.screens.count > 1) {
         [self handleScreenConnected:UIScreen.screens[1]];
     }
@@ -62,6 +69,7 @@
 
 - (void)stopMonitoring {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
+    [self restoreStreamViewToiPhone];
     dispatch_async(dispatch_get_main_queue(), ^{
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
@@ -76,6 +84,7 @@
 }
 
 - (void)screenDidDisconnect:(NSNotification *)note {
+    [self restoreStreamViewToiPhone];
     dispatch_async(dispatch_get_main_queue(), ^{
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
@@ -87,85 +96,115 @@
         // Create fullscreen window on external display
         UIWindow *window = [[UIWindow alloc] initWithFrame:screen.bounds];
         window.screen = screen;
+        window.backgroundColor = [UIColor blackColor];
         
-        // Black background view controller
         UIViewController *vc = [UIViewController new];
         vc.view.backgroundColor = [UIColor blackColor];
+        window.rootViewController = vc;
+        window.hidden = NO;
+        self->_externalWindow = window;
         
-        // App icon
+        // Show waiting screen on external display
         UIImageView *iconView = [[UIImageView alloc] initWithImage:[UIImage imageNamed:@"AppIcon"]];
         iconView.contentMode = UIViewContentModeScaleAspectFit;
         iconView.layer.cornerRadius = 20;
         iconView.clipsToBounds = YES;
         iconView.translatesAutoresizingMaskIntoConstraints = NO;
         
-        // Waiting label
-        self->_statusLabel = [[UILabel alloc] init];
-        self->_statusLabel.text = @"Waiting for stream...";
-        self->_statusLabel.textColor = [UIColor whiteColor];
-        self->_statusLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightLight];
-        self->_statusLabel.translatesAutoresizingMaskIntoConstraints = NO;
+        UILabel *waitLabel = [[UILabel alloc] init];
+        waitLabel.text = @"Waiting for stream...";
+        waitLabel.textColor = [UIColor whiteColor];
+        waitLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightLight];
+        waitLabel.translatesAutoresizingMaskIntoConstraints = NO;
         
-        // Spinner
-        self->_spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
+        self->_spinner = [[UIActivityIndicatorView alloc] 
+            initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhiteLarge];
         self->_spinner.translatesAutoresizingMaskIntoConstraints = NO;
         [self->_spinner startAnimating];
         
-        // Layout
         [vc.view addSubview:iconView];
-        [vc.view addSubview:self->_statusLabel];
         [vc.view addSubview:self->_spinner];
+        [vc.view addSubview:waitLabel];
         
         [NSLayoutConstraint activateConstraints:@[
-            // Icon - centered slightly above middle
             [iconView.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
             [iconView.centerYAnchor constraintEqualToAnchor:vc.view.centerYAnchor constant:-80],
             [iconView.widthAnchor constraintEqualToConstant:100],
             [iconView.heightAnchor constraintEqualToConstant:100],
-            
-            // Spinner - below icon
             [self->_spinner.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
             [self->_spinner.topAnchor constraintEqualToAnchor:iconView.bottomAnchor constant:24],
-            
-            // Label - below spinner
-            [self->_statusLabel.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
-            [self->_statusLabel.topAnchor constraintEqualToAnchor:self->_spinner.bottomAnchor constant:16],
+            [waitLabel.centerXAnchor constraintEqualToAnchor:vc.view.centerXAnchor],
+            [waitLabel.topAnchor constraintEqualToAnchor:self->_spinner.bottomAnchor constant:16],
         ]];
-        
-        window.rootViewController = vc;
-        window.hidden = NO;
-        self->_externalWindow = window;
     });
 }
 
 - (void)showStreamingScreen {
+    if (!_externalWindow || !_streamView) return;
+    
     dispatch_async(dispatch_get_main_queue(), ^{
-        self->_statusLabel.text = @"Stream active on iPhone";
-        self->_spinner.hidden = YES;
-        [self->_spinner stopAnimating];
+        UIViewController *vc = self->_externalWindow.rootViewController;
+        if (!vc) return;
         
-        // Add a subtitle
-        if (self->_subtitleLabel == nil) {
-            self->_subtitleLabel = [[UILabel alloc] init];
-            self->_subtitleLabel.text = @"Video output coming soon";
-            self->_subtitleLabel.textColor = [UIColor grayColor];
-            self->_subtitleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightLight];
-            self->_subtitleLabel.translatesAutoresizingMaskIntoConstraints = NO;
-            [self->_statusLabel.superview addSubview:self->_subtitleLabel];
-            [NSLayoutConstraint activateConstraints:@[
-                [self->_subtitleLabel.centerXAnchor constraintEqualToAnchor:self->_statusLabel.centerXAnchor],
-                [self->_subtitleLabel.topAnchor constraintEqualToAnchor:self->_statusLabel.bottomAnchor constant:8],
-            ]];
+        // Save original position
+        self->_originalStreamFrame = self->_streamView.frame;
+        self->_originalStreamParent = self->_streamView.superview;
+        
+        // Show placeholder on iPhone
+        self->_placeholderView = [[UIView alloc] initWithFrame:self->_hostVC.view.bounds];
+        self->_placeholderView.backgroundColor = [UIColor blackColor];
+        self->_placeholderView.autoresizingMask = 
+            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        
+        UILabel *label = [[UILabel alloc] init];
+        label.text = @"Streaming to external display";
+        label.textColor = [UIColor whiteColor];
+        label.font = [UIFont systemFontOfSize:18 weight:UIFontWeightLight];
+        label.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        UILabel *sublabel = [[UILabel alloc] init];
+        sublabel.text = @"Look at your monitor";
+        sublabel.textColor = [UIColor grayColor];
+        sublabel.font = [UIFont systemFontOfSize:14];
+        sublabel.translatesAutoresizingMaskIntoConstraints = NO;
+        
+        [self->_placeholderView addSubview:label];
+        [self->_placeholderView addSubview:sublabel];
+        
+        [NSLayoutConstraint activateConstraints:@[
+            [label.centerXAnchor constraintEqualToAnchor:self->_placeholderView.centerXAnchor],
+            [label.centerYAnchor constraintEqualToAnchor:self->_placeholderView.centerYAnchor],
+            [sublabel.centerXAnchor constraintEqualToAnchor:self->_placeholderView.centerXAnchor],
+            [sublabel.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8],
+        ]];
+        
+        [self->_hostVC.view addSubview:self->_placeholderView];
+        
+        // Move stream view to external display — FULLSCREEN
+        [vc.view addSubview:self->_streamView];
+        self->_streamView.frame = vc.view.bounds;
+        self->_streamView.autoresizingMask = 
+            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        
+        // Stop spinner
+        [self->_spinner stopAnimating];
+        self->_spinner.hidden = YES;
+    });
+}
+
+- (void)restoreStreamViewToiPhone {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (self->_streamView && self->_originalStreamParent) {
+            [self->_originalStreamParent addSubview:self->_streamView];
+            self->_streamView.frame = self->_originalStreamFrame;
         }
+        [self->_placeholderView removeFromSuperview];
+        self->_placeholderView = nil;
     });
 }
 
 - (void)showWaitingScreen {
-    dispatch_async(dispatch_get_main_queue(), ^{
-        self->_statusLabel.text = @"Waiting for stream...";
-        self->_spinner.hidden = NO;
-        [self->_spinner startAnimating];
-    });
+    [self restoreStreamViewToiPhone];
 }
 @end
 // ---- End External Display Manager ----
@@ -228,7 +267,8 @@
 - (void)viewDidLoad
 {
     // Start external display monitoring
-    [[ExternalDisplayManager shared] startMonitoring];
+    [[ExternalDisplayManager shared] startMonitoringWithStreamView:_streamView 
+                                              hostViewController:self];
     
     [super viewDidLoad];
     
