@@ -336,14 +336,12 @@
     [[self revealViewController] setPrimaryViewController:self];
     
     if (@available(iOS 14.0, *)) {
+        // Force this view controller to become key window
+        [self.view.window makeKeyAndVisible];
         [self setNeedsUpdateOfPrefersPointerLocked];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [self setNeedsUpdateOfPrefersPointerLocked];
-        });
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-            [self setNeedsUpdateOfPrefersPointerLocked];
-        });
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(1.0 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+            [self.view.window makeKeyAndVisible];
             [self setNeedsUpdateOfPrefersPointerLocked];
         });
     }
@@ -511,38 +509,6 @@
     dispatch_async(dispatch_get_main_queue(), ^{
 
         [[ExternalDisplayManager shared] showStreamingScreen];
-
-        // Show placeholder on iPhone when streaming to external display
-
-if (UIScreen.screens.count > 1) {
-    UIView *placeholder = [[UIView alloc] initWithFrame:self.view.bounds];
-    placeholder.backgroundColor = [UIColor blackColor];
-    placeholder.tag = 9999;
-    placeholder.autoresizingMask = 
-        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    
-    UILabel *label = [[UILabel alloc] init];
-    label.text = @"Streaming to external display";
-    label.textColor = [UIColor whiteColor];
-    label.font = [UIFont systemFontOfSize:18 weight:UIFontWeightLight];
-    label.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    UILabel *sublabel = [[UILabel alloc] init];
-    sublabel.text = @"Look at your monitor";
-    sublabel.textColor = [UIColor grayColor];
-    sublabel.font = [UIFont systemFontOfSize:14];
-    sublabel.translatesAutoresizingMaskIntoConstraints = NO;
-    
-    [placeholder addSubview:label];
-    [placeholder addSubview:sublabel];
-    [NSLayoutConstraint activateConstraints:@[
-        [label.centerXAnchor constraintEqualToAnchor:placeholder.centerXAnchor],
-        [label.centerYAnchor constraintEqualToAnchor:placeholder.centerYAnchor],
-        [sublabel.centerXAnchor constraintEqualToAnchor:placeholder.centerXAnchor],
-        [sublabel.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8],
-    ]];
-    [self.view addSubview:placeholder];
-}
 
         // Leave the spinner spinning until it's obscured by
         // the first frame of video.
@@ -872,8 +838,6 @@ if (UIScreen.screens.count > 1) {
     // Stop external display when stream ends
     [[ExternalDisplayManager shared] stopMonitoring];
 
-    // Remove placeholder when stream ends
-    [[self.view viewWithTag:9999] removeFromSuperview];
 }
 
 @end
