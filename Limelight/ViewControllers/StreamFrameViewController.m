@@ -54,37 +54,67 @@
     if (_externalLayer != nil) {
         [_renderer setExternalDisplayLayer:_externalLayer];
         dispatch_async(dispatch_get_main_queue(), ^{
+            // Hide waiting UI
             [self->_spinner stopAnimating];
             self->_spinner.hidden = YES;
             self->_waitLabel.hidden = YES;
             
-            // Turn off iPhone screen if setting enabled
-            BOOL turnOff = [[NSUserDefaults standardUserDefaults] boolForKey:@"turnOffScreenOnMonitor"];
+            // Show black overlay on iPhone if setting enabled
+            BOOL turnOff = [[NSUserDefaults standardUserDefaults] 
+                            boolForKey:@"turnOffScreenOnMonitor"];
             if (turnOff) {
-                // Get window more reliably on iOS 13+
-                UIWindow *keyWindow = nil;
+                // Find the stream view controller's view directly
+                UIViewController *streamVC = nil;
                 for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
                     if ([scene isKindOfClass:[UIWindowScene class]]) {
-                        UIWindowScene *windowScene = (UIWindowScene *)scene;
-                        for (UIWindow *window in windowScene.windows) {
-                            if (window.isKeyWindow) {
-                                keyWindow = window;
-                                break;
+                        UIWindowScene *ws = (UIWindowScene *)scene;
+                        for (UIWindow *w in ws.windows) {
+                            if ([w.rootViewController.presentedViewController isKindOfClass:[UINavigationController class]]) {
+                                UINavigationController *nav = (UINavigationController *)w.rootViewController.presentedViewController;
+                                streamVC = nav.visibleViewController;
+                            } else if ([w.rootViewController isKindOfClass:[UINavigationController class]]) {
+                                UINavigationController *nav = (UINavigationController *)w.rootViewController;
+                                streamVC = nav.visibleViewController;
                             }
                         }
+                    }
+                }
+                
+                // Add black overlay directly to stream VC view
+                UIView *targetView = streamVC ? streamVC.view : nil;
+                if (targetView && [targetView viewWithTag:8888] == nil) {
+                    UIView *blackout = [[UIView alloc] initWithFrame:targetView.bounds];
+                    blackout.backgroundColor = [UIColor blackColor];
+                    blackout.tag = 8888;
+                    blackout.userInteractionEnabled = NO;
+                    blackout.autoresizingMask = 
+                        UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+                    
+                    // Add "Touchpad Mode" label
+                    UILabel *label = [[UILabel alloc] init];
+                    label.text = @"Touchpad Mode";
+                    label.textColor = [UIColor colorWithWhite:1.0 alpha:0.3];
+                    label.font = [UIFont systemFontOfSize:16 weight:UIFontWeightLight];
+                    label.translatesAutoresizingMaskIntoConstraints = NO;
+                    [blackout addSubview:label];
+                    
+                    UILabel *sublabel = [[UILabel alloc] init];
+                    sublabel.text = @"Stream active on monitor";
+                    sublabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.15];
+                    sublabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightLight];
+                    sublabel.translatesAutoresizingMaskIntoConstraints = NO;
+                    [blackout addSubview:sublabel];
+                    
+                    [NSLayoutConstraint activateConstraints:@[
+                        [label.centerXAnchor constraintEqualToAnchor:blackout.centerXAnchor],
+                        [label.centerYAnchor constraintEqualToAnchor:blackout.centerYAnchor],
+                        [sublabel.centerXAnchor constraintEqualToAnchor:blackout.centerXAnchor],
+                        [sublabel.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8],
+                    ]];
+                    
+                    [targetView addSubview:blackout];
+                }
             }
-    }
-    
-    if (keyWindow && [keyWindow viewWithTag:8888] == nil) {
-        UIView *blackout = [[UIView alloc] initWithFrame:keyWindow.bounds];
-        blackout.backgroundColor = [UIColor blackColor];
-        blackout.tag = 8888;
-        blackout.userInteractionEnabled = NO;
-        blackout.autoresizingMask =
-            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        [keyWindow addSubview:blackout];
-    }
-}
         });
     }
 }
@@ -113,20 +143,15 @@
         [_renderer setExternalDisplayLayer:nil];
     }
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Remove black overlay when stream ends
-        UIWindow *keyWindow = nil;
+        // Remove black overlay
         for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
             if ([scene isKindOfClass:[UIWindowScene class]]) {
-                UIWindowScene *windowScene = (UIWindowScene *)scene;
-                for (UIWindow *window in windowScene.windows) {
-                    if (window.isKeyWindow) {
-                        keyWindow = window;
-                        break;
-                    }
+                UIWindowScene *ws = (UIWindowScene *)scene;
+                for (UIWindow *w in ws.windows) {
+                    [[w viewWithTag:8888] removeFromSuperview];
                 }
             }
         }
-        [[keyWindow viewWithTag:8888] removeFromSuperview];
         self->_externalWindow.hidden = YES;
         self->_externalWindow = nil;
         self->_externalLayer = nil;
