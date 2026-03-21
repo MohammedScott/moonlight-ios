@@ -266,10 +266,7 @@
 
 - (void)viewDidLoad
 {
-    // Start external display monitoring
-    [[ExternalDisplayManager shared] startMonitoringWithStreamView:_streamView 
-                                              hostViewController:self];
-    
+
     [super viewDidLoad];
     
     [self.navigationController setNavigationBarHidden:YES animated:YES];
@@ -302,6 +299,10 @@
     
     _streamView = [[StreamView alloc] initWithFrame:self.view.frame];
     [_streamView setupStreamView:_controllerSupport interactionDelegate:self config:self.streamConfig];
+    
+    // Start external display monitoring AFTER streamView is created
+    [[ExternalDisplayManager shared] startMonitoringWithStreamView:_streamView 
+                                                  hostViewController:self];
     
 #if TARGET_OS_TV
     if (!_menuTapGestureRecognizer || !_menuDoubleTapGestureRecognizer || !_playPauseTapGestureRecognizer) {
