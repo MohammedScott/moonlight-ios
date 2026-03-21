@@ -531,10 +531,6 @@
 
         // External display handled automatically by renderer
 
-        // Connect renderer to external display
-        if ([self->_streamMan respondsToSelector:@selector(getRenderer)]) {
-            [[ExternalDisplayManager shared] setRenderer:[self->_streamMan getRenderer]];
-        }
 
         // Leave the spinner spinning until it's obscured by
         // the first frame of video.

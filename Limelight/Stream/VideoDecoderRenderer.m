@@ -8,6 +8,7 @@
 
 #import "VideoDecoderRenderer.h"
 #import "StreamView.h"
+#import "StreamFrameViewController.h"
 
 #include <libavcodec/avcodec.h>
 #include <libavcodec/cbs.h>
@@ -92,6 +93,9 @@ extern int ff_isom_write_av1c(AVIOContext *pb, const uint8_t *buf, int size,
     parameterSetBuffers = [[NSMutableArray alloc] init];
     
     [self reinitializeDisplayLayer];
+    
+    // Register with external display manager
+    [[ExternalDisplayManager shared] setRenderer:self];
     
     return self;
 }
