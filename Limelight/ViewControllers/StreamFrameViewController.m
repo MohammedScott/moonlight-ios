@@ -625,18 +625,50 @@ vc.view.frame = CGRectMake(0, 0, screen.bounds.size.width, screen.bounds.size.he
 - (void) connectionStarted {
     Log(LOG_I, @"Connection started");
     dispatch_async(dispatch_get_main_queue(), ^{
-
-        // External display handled automatically by renderer
-
-
-        // Leave the spinner spinning until it's obscured by
-        // the first frame of video.
         self->_stageLabel.hidden = YES;
         self->_tipLabel.hidden = YES;
         
         [self->_streamView showOnScreenControls];
-        
         [self->_controllerSupport connectionEstablished];
+        
+        // Show black overlay on iPhone if monitor connected and setting enabled
+        BOOL turnOff = [[NSUserDefaults standardUserDefaults]
+                        boolForKey:@"turnOffScreenOnMonitor"];
+        if (turnOff && UIScreen.screens.count > 1) {
+            if ([self.view viewWithTag:8888] == nil) {
+                UIView *blackout = [[UIView alloc] initWithFrame:self.view.bounds];
+                blackout.backgroundColor = [UIColor blackColor];
+                blackout.tag = 8888;
+                blackout.userInteractionEnabled = NO;
+                blackout.autoresizingMask =
+                    UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+                
+                UILabel *label = [[UILabel alloc] init];
+                label.text = @"Touchpad Mode";
+                label.textColor = [UIColor colorWithWhite:1.0 alpha:0.3];
+                label.font = [UIFont systemFontOfSize:16 weight:UIFontWeightLight];
+                label.translatesAutoresizingMaskIntoConstraints = NO;
+                [blackout addSubview:label];
+                
+                UILabel *sublabel = [[UILabel alloc] init];
+                sublabel.text = @"Stream active on monitor";
+                sublabel.textColor = [UIColor colorWithWhite:1.0 alpha:0.15];
+                sublabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightLight];
+                sublabel.translatesAutoresizingMaskIntoConstraints = NO;
+                [blackout addSubview:sublabel];
+                
+                [NSLayoutConstraint activateConstraints:@[
+                    [label.centerXAnchor constraintEqualToAnchor:blackout.centerXAnchor],
+                    [label.centerYAnchor constraintEqualToAnchor:blackout.centerYAnchor],
+                    [sublabel.centerXAnchor constraintEqualToAnchor:blackout.centerXAnchor],
+                    [sublabel.topAnchor constraintEqualToAnchor:label.bottomAnchor constant:8],
+                ]];
+                
+                // Add on top of everything
+                [self.view addSubview:blackout];
+                [self.view bringSubviewToFront:blackout];
+            }
+        }
         
         if (self->_settings.statsOverlay) {
             self->_statsUpdateTimer = [NSTimer scheduledTimerWithTimeInterval:1.0f
@@ -953,10 +985,9 @@ vc.view.frame = CGRectMake(0, 0, screen.bounds.size.width, screen.bounds.size.he
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    
-    // Stop external display when stream ends
+    // Remove blackout overlay
+    [[self.view viewWithTag:8888] removeFromSuperview];
     [[ExternalDisplayManager shared] stopMonitoring];
-
 }
 
 @end
