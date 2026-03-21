@@ -182,9 +182,14 @@
         
         // Move stream view to external display — FULLSCREEN
         [vc.view addSubview:self->_streamView];
-        self->_streamView.frame = vc.view.bounds;
-        self->_streamView.autoresizingMask = 
-            UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        self->_streamView.translatesAutoresizingMaskIntoConstraints = NO;
+        [NSLayoutConstraint activateConstraints:@[
+           [self->_streamView.topAnchor constraintEqualToAnchor:vc.view.topAnchor],
+           [self->_streamView.bottomAnchor constraintEqualToAnchor:vc.view.bottomAnchor],
+           [self->_streamView.leadingAnchor constraintEqualToAnchor:vc.view.leadingAnchor],
+           [self->_streamView.trailingAnchor constraintEqualToAnchor:vc.view.trailingAnchor],
+]];
+[vc.view layoutIfNeeded];
         
         // Stop spinner
         [self->_spinner stopAnimating];
