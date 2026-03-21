@@ -117,13 +117,28 @@
         window.rootViewController = vc;
         
         // Create AVSampleBufferDisplayLayer filling the entire screen
-        AVSampleBufferDisplayLayer *layer = [[AVSampleBufferDisplayLayer alloc] init];
-        layer.frame = vc.view.bounds;
-        layer.videoGravity = AVLayerVideoGravityResizeAspect;
-        layer.backgroundColor = [UIColor blackColor].CGColor;
-        layer.hidden = YES;
-        [vc.view.layer addSublayer:layer];
-        self->_externalLayer = layer;
+AVSampleBufferDisplayLayer *layer = [[AVSampleBufferDisplayLayer alloc] init];
+
+// Fill entire screen
+layer.frame = CGRectMake(0, 0, screen.bounds.size.width, screen.bounds.size.height);
+
+// Match screen's native pixel density - fixes pixelation
+layer.contentsScale = screen.scale;
+
+// Resize to fill completely - no black bars
+layer.videoGravity = AVLayerVideoGravityResizeAspectFill;
+layer.backgroundColor = [UIColor blackColor].CGColor;
+
+// Disable any rasterization that causes edge artifacts
+layer.shouldRasterize = NO;
+layer.drawsAsynchronously = YES;
+layer.hidden = YES;
+
+[vc.view.layer addSublayer:layer];
+self->_externalLayer = layer;
+
+// Make sure view controller view fills screen too
+vc.view.frame = CGRectMake(0, 0, screen.bounds.size.width, screen.bounds.size.height);
         
         // Waiting UI
         self->_spinner = [[UIActivityIndicatorView alloc]
