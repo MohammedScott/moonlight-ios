@@ -634,7 +634,7 @@ vc.view.frame = CGRectMake(0, 0, screen.bounds.size.width, screen.bounds.size.he
         // Show black overlay on iPhone if monitor connected and setting enabled
         BOOL turnOff = [[NSUserDefaults standardUserDefaults]
                         boolForKey:@"turnOffScreenOnMonitor"];
-        if (UIScreen.screens.count > 1) {
+        if (turnOff && UIScreen.screens.count > 1) {
             if ([self.view viewWithTag:8888] == nil) {
                 UIView *blackout = [[UIView alloc] initWithFrame:self.view.bounds];
                 blackout.backgroundColor = [UIColor blackColor];
@@ -978,9 +978,13 @@ vc.view.frame = CGRectMake(0, 0, screen.bounds.size.width, screen.bounds.size.he
 }
 
 - (BOOL)prefersPointerLocked {
-    // Only lock pointer when a mouse is actually connected
     if (@available(iOS 14.0, *)) {
-        return [GCMouse mice].count > 0;
+        for (GCMouse *mouse in [GCMouse mice]) {
+            if (mouse.mouseInput != nil) {
+                return YES;
+            }
+        }
+        return [GCMouse current] != nil;
     }
     return NO;
 }
@@ -989,7 +993,6 @@ vc.view.frame = CGRectMake(0, 0, screen.bounds.size.width, screen.bounds.size.he
 
 - (void)viewWillDisappear:(BOOL)animated {
     [super viewWillDisappear:animated];
-    // Remove blackout overlay
     [[self.view viewWithTag:8888] removeFromSuperview];
     [[ExternalDisplayManager shared] stopMonitoring];
 }

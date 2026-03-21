@@ -91,6 +91,8 @@
         settingsToSave.absoluteTouchMode = absoluteTouchMode;
         settingsToSave.statsOverlay = statsOverlay;
         [[NSUserDefaults standardUserDefaults] setBool:reverseScrollDirection forKey:@"reverseScrollDirection"];
+        [[NSUserDefaults standardUserDefaults] setBool:turnOffScreenOnMonitor forKey:@"turnOffScreenOnMonitor"];
+        [[NSUserDefaults standardUserDefaults] setBool:disableMouseSmoothing forKey:@"disableMouseSmoothing"];
         
         [self saveData];
     }];
