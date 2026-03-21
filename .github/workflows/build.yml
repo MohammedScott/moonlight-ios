@@ -1,9 +1,11 @@
-name: Build Moonlight
+name: Build Moonlight Plus
 
 on:
   push:
     branches: [ "master", "main" ]
   workflow_dispatch:
+  release:
+    types: [created]
 
 jobs:
   build:
@@ -37,43 +39,26 @@ jobs:
             2>&1 | tee build_log.txt
           exit ${PIPESTATUS[0]}
 
-      - name: Export IPA
-        run: |
-          cat > ExportOptions.plist << EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>ad-hoc</string>
-            <key>compileBitcode</key>
-            <false/>
-            <key>signingStyle</key>
-            <string>manual</string>
-          </dict>
-          </plist>
-          EOF
-
-          xcodebuild \
-            -exportArchive \
-            -archivePath $PWD/build/Moonlight.xcarchive \
-            -exportPath $PWD/build/ipa \
-            -exportOptionsPlist ExportOptions.plist \
-            CODE_SIGNING_ALLOWED=NO \
-            2>&1 || true
-
-      - name: Package app for sideloading
+      - name: Package IPA
         run: |
           mkdir -p Payload
           cp -r build/Moonlight.xcarchive/Products/Applications/Moonlight.app Payload/
-          zip -r Moonlight.ipa Payload
-          ls -lh Moonlight.ipa
+          zip -r MoonlightPlus.ipa Payload
+          ls -lh MoonlightPlus.ipa
 
-      - name: Upload IPA
+      - name: Upload IPA as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Moonlight-IPA
-          path: Moonlight.ipa
+          name: MoonlightPlus-IPA
+          path: MoonlightPlus.ipa
+
+      - name: Upload IPA to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: MoonlightPlus.ipa
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload build log
         if: failure()
